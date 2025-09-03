@@ -26,7 +26,7 @@ Aplikace nabízí správu návyků, přehled historie plnění, statistiky a mo�
 - **Frontend:** HTML5, CSS3, JavaScript
 - **Backend:** PHP 8.x
 - **Databáze:** MySQL / MariaDB
-- **Frameworky / knihovny:** Bootstrap 5, jQuery (volitelné)
+- **Frameworky / knihovny:** Bootstrap 5
 - **Vývojové prostředí:** Visual Studio Code, XAMPP
 
 ---
