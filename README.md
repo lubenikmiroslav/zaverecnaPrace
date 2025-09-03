@@ -40,10 +40,6 @@ Aplikace nabízí správu návyků, přehled historie plnění, statistiky a mo�
 - [ ] Kalendář a statistiky
 - [ ] Dokumentace a obhajoba
 
----
 
-## 🔚 Závěr
-
-Cílem tohoto projektu je nejen vytvořit funkční aplikaci, ale také prokázat schopnosti v oblasti návrhu databáze, vývoje uživatelského rozhraní a práce s backendem. Projekt bude prezentován jako součást praktické maturitní zkoušky z oboru Informační technologie.
 
 
