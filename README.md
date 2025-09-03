@@ -21,7 +21,7 @@ Aplikace nabízí správu návyků, přehled historie plnění, statistiky a mo�
 
 ## 🛠️ Použité technologie
 
-> *(přizpůsob si podle toho, co přesně použiješ – zde je ukázka pro webovou verzi)*
+
 
 - **Frontend:** HTML5, CSS3, JavaScript
 - **Backend:** PHP 8.x
