@@ -1,45 +1,16 @@
-# 🧠 HabitTrack – Aplikace pro sledování návyků a zdraví
+# rocnikovy
 
-## 📌 Popis projektu
+A new Flutter project.
 
-Tento projekt je jednoduchá a přehledná aplikace pro sledování zdravých návyků. Uživatel si může vytvářet vlastní návyky (např. pitný režim, cvičení, spánek) a každý den zaznamenávat jejich splnění. Cílem je motivovat uživatele k dlouhodobé pravidelnosti a zlepšování životního stylu pomocí přehledné vizualizace pokroku.
+## Getting Started
 
-Aplikace nabízí správu návyků, přehled historie plnění, statistiky a možnost přizpůsobení. Výsledkem je nástroj, který může pomoci uživatelům budovat pozitivní rutiny a sledovat vlastní rozvoj.
+This project is a starting point for a Flutter application.
 
----
+A few resources to get you started if this is your first Flutter project:
 
-## 🎯 Cíle a ambice projektu
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-- 📅 Umožnit uživateli evidovat denní plnění vlastních návyků
-- 🧾 Poskytnout přehledné rozhraní pro přidávání a úpravu návyků
-- 📊 Zobrazit historii a jednoduché statistiky (např. kolik dní byl návyk splněn)
-- 🔒 Implementovat základní správu uživatelů (registrace, přihlášení)
-- 🎨 Umožnit personalizaci – např. barevné motivy, přezdívku uživatele
-- 🔔 Volitelně: přidat připomenutí / notifikace
-
----
-
-## 🛠️ Použité technologie
-
-
-                flatter
-- **Frontend:** HTML5, CSS3, JavaScript
-- **Backend:** PHP 8.x
-- **Databáze:** MySQL / MariaDB
-- **Frameworky / knihovny:** Bootstrap 5
-- **Vývojové prostředí:** Visual Studio Code, XAMPP
-
----
-
-## 📎 Stav projektu
-
-- [ ] Návrh databáze
-- [ ] Uživatelské rozhraní (UI design)
-- [ ] Přihlášení / registrace
-- [ ] Funkce pro správu návyků
-- [ ] Kalendář a statistiky
-- [ ] Dokumentace a obhajoba
-
-
-
-
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
