@@ -1,27 +1,48 @@
-🧠 HabitTrack – Aplikace pro sledování návyků a zdraví
-📌 Popis projektu
-Tento projekt je jednoduchá a přehledná aplikace pro sledování zdravých návyků. Uživatel si může vytvářet vlastní návyky (např. pitný režim, cvičení, spánek) a každý den zaznamenávat jejich splnění. Cílem je motivovat uživatele k dlouhodobé pravidelnosti a zlepšování životního stylu pomocí přehledné vizualizace pokroku.
+# 🧠 HabitTrack – Aplikace pro sledování návyků a zdraví
 
-Aplikace nabízí správu návyků, přehled historie plnění, statistiky a možnost přizpůsobení. Výsledkem je nástroj, který může pomoci uživatelům budovat pozitivní rutiny a sledovat vlastní rozvoj.
+**HabitTrack** je moderní mobilní aplikace vytvořená ve **Flutteru**, která pomáhá uživatelům sledovat, budovat a udržovat zdravé návyky.  
+Uživatel si může vytvářet vlastní návyky (např. pitný režim, cvičení, spánek) a každý den zaznamenávat jejich plnění.  
+Cílem aplikace je motivovat uživatele k dlouhodobé pravidelnosti a zlepšování životního stylu pomocí přehledné vizualizace pokroku.
 
-🎯 Cíle a ambice projektu
-📅 Umožnit uživateli evidovat denní plnění vlastních návyků
-🧾 Poskytnout přehledné rozhraní pro přidávání a úpravu návyků
-📊 Zobrazit historii a jednoduché statistiky (např. kolik dní byl návyk splněn)
-🔒 Implementovat základní správu uživatelů (registrace, přihlášení)
-🎨 Umožnit personalizaci – např. barevné motivy, přezdívku uživatele
-🔔 Volitelně: přidat připomenutí / notifikace
-🛠️ Použité technologie
-            flutter
-Frontend: HTML5, CSS3, JavaScript
-Backend: PHP 8.x
-Databáze: MySQL / MariaDB
-Frameworky / knihovny: Bootstrap 5
-Vývojové prostředí: Visual Studio Code, XAMPP
-📎 Stav projektu
- Návrh databáze
- Uživatelské rozhraní (UI design)
- Přihlášení / registrace
- Funkce pro správu návyků
- Kalendář a statistiky
- Dokumentace a obhajoba
+---
+
+## 🎯 Cíle projektu
+
+- 📅 Umožnit uživateli **sledovat denní plnění návyků**
+- 🧾 Poskytnout **přehledné a intuitivní rozhraní**
+- 📊 Zobrazit **historii a statistiky** (např. kolik dní byl návyk splněn)
+- 🔒 Implementovat **správu uživatelů** (registrace, přihlášení)
+- 🎨 Nabídnout **personalizaci prostředí** – např. přezdívka nebo barevné motivy
+- 🔔 *(Volitelně)* Přidat připomenutí a notifikace
+
+---
+
+## 🛠️ Použité technologie
+
+| Vrstva | Technologie |
+|:-------|:-------------|
+| **Framework** | Flutter (Dart) |
+
+
+---
+
+## 🧩 Hlavní funkcionality
+
+- ✅ **Registrace a přihlášení uživatele** (Firebase Auth nebo lokální)
+- ➕ **Přidávání, úprava a mazání návyků**
+- 📆 **Kalendář plnění návyků**
+- 📈 **Statistiky a vizualizace pokroku**
+- 🎨 **Personalizace aplikace** (tmavý/světlý režim, motivy)
+- 🔔 *(Volitelně)* **Notifikace / připomenutí**
+- 💾 **Ukládání dat offline**
+
+---
+
+## 🗃️ Stav projektu
+
+- [x] Návrh databáze  
+- [x] Návrh uživatelského rozhraní (UI design)  
+- [x] Přihlášení / registrace  
+- [ ] Správa návyků  
+- [ ] Kalendář a statistiky  
+- [ ] Dokumentace a obhajoba  
