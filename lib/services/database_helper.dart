@@ -18,7 +18,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 2, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 4, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -33,6 +33,30 @@ class DatabaseHelper {
         );
       ''');
     }
+    if (oldVersion < 3) {
+      // Přidat sloupce do habits
+      await db.execute('ALTER TABLE habits ADD COLUMN category TEXT');
+      await db.execute('ALTER TABLE habits ADD COLUMN reminder_time TEXT');
+      await db.execute('ALTER TABLE habits ADD COLUMN has_timer INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE habits ADD COLUMN timer_duration INTEGER DEFAULT 0');
+      
+      // Tabulka pro achievements
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS achievements (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          habit_id INTEGER,
+          type TEXT,
+          unlocked_at TEXT,
+          FOREIGN KEY (user_id) REFERENCES users (id),
+          FOREIGN KEY (habit_id) REFERENCES habits (id)
+        );
+      ''');
+    }
+    if (oldVersion < 4) {
+      // Přidat sloupec pro profilovou fotku
+      await db.execute('ALTER TABLE users ADD COLUMN profile_photo_path TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -42,7 +66,8 @@ class DatabaseHelper {
         nickname TEXT,
         theme_color TEXT,
         email TEXT UNIQUE,
-        password_hash TEXT
+        password_hash TEXT,
+        profile_photo_path TEXT
       );
     ''');
 
@@ -55,6 +80,10 @@ class DatabaseHelper {
         color TEXT,
         icon TEXT,
         created_at TEXT,
+        category TEXT,
+        reminder_time TEXT,
+        has_timer INTEGER DEFAULT 0,
+        timer_duration INTEGER DEFAULT 0,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
     ''');
@@ -76,6 +105,18 @@ class DatabaseHelper {
         date TEXT,
         note TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
+      );
+    ''');
+
+    await db.execute('''
+      CREATE TABLE achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        habit_id INTEGER,
+        type TEXT,
+        unlocked_at TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (habit_id) REFERENCES habits (id)
       );
     ''');
   }
@@ -359,6 +400,130 @@ class DatabaseHelper {
       whereArgs: [userId, date],
     );
   }
+
+  // ✅ Achievement metody
+  Future<int> unlockAchievement(int userId, int habitId, String type) async {
+    final db = await database;
+    // Zkontroluj, zda už není odemčeno
+    final existing = await db.query(
+      'achievements',
+      where: 'user_id = ? AND habit_id = ? AND type = ?',
+      whereArgs: [userId, habitId, type],
+    );
+    if (existing.isEmpty) {
+      return await db.insert('achievements', {
+        'user_id': userId,
+        'habit_id': habitId,
+        'type': type,
+        'unlocked_at': DateTime.now().toIso8601String(),
+      });
+    }
+    return 0;
+  }
+
+  Future<List<Map<String, dynamic>>> getUserAchievements(int userId) async {
+    final db = await database;
+    return await db.query(
+      'achievements',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'unlocked_at DESC',
+    );
+  }
+
+  Future<bool> hasAchievement(int userId, int habitId, String type) async {
+    final db = await database;
+    final result = await db.query(
+      'achievements',
+      where: 'user_id = ? AND habit_id = ? AND type = ?',
+      whereArgs: [userId, habitId, type],
+    );
+    return result.isNotEmpty;
+  }
+
+  // ✅ Získání streak pro návyk
+  Future<int> getHabitStreak(int habitId) async {
+    final dates = await getCompletedDatesForHabit(habitId);
+    if (dates.isEmpty) return 0;
+    
+    final sortedDates = dates.map((d) => DateTime.parse(d)).toList()
+      ..sort((a, b) => b.compareTo(a));
+    
+    final today = DateTime.now();
+    final todayStr = today.toIso8601String().split('T').first;
+    final yesterdayStr = today.subtract(const Duration(days: 1)).toIso8601String().split('T').first;
+    
+    if (!dates.contains(todayStr) && !dates.contains(yesterdayStr)) {
+      return 0;
+    }
+
+    int streak = 0;
+    DateTime checkDate = dates.contains(todayStr) ? today : today.subtract(const Duration(days: 1));
+    
+    for (int i = 0; i < 365; i++) {
+      final checkStr = checkDate.toIso8601String().split('T').first;
+      if (dates.contains(checkStr)) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
+  // ✅ Kontrola a odemčení achievementů
+  Future<List<String>> checkAndUnlockAchievements(int userId, int habitId) async {
+    final streak = await getHabitStreak(habitId);
+    List<String> unlocked = [];
+    
+    // Achievement: 7 dní v řadě
+    if (streak >= 7 && !await hasAchievement(userId, habitId, '7_day_streak')) {
+      await unlockAchievement(userId, habitId, '7_day_streak');
+      unlocked.add('7_day_streak');
+    }
+    
+    // Achievement: 30 dní v řadě
+    if (streak >= 30 && !await hasAchievement(userId, habitId, '30_day_streak')) {
+      await unlockAchievement(userId, habitId, '30_day_streak');
+      unlocked.add('30_day_streak');
+    }
+    
+    // Achievement pro celkový počet splnění
+    final dates = await getCompletedDatesForHabit(habitId);
+    if (dates.length >= 100 && !await hasAchievement(userId, habitId, '100_completions')) {
+      await unlockAchievement(userId, habitId, '100_completions');
+      unlocked.add('100_completions');
+    }
+    
+    return unlocked;
+  }
+
+  // ✅ Získání návyků podle kategorie
+  Future<List<Map<String, dynamic>>> getHabitsByCategory(int userId, String? category) async {
+    final db = await database;
+    if (category == null || category.isEmpty) {
+      return await getHabits(userId);
+    }
+    return await db.query(
+      'habits',
+      where: 'user_id = ? AND category = ?',
+      whereArgs: [userId, category],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  // ✅ Získání všech kategorií uživatele
+  Future<List<String>> getUserCategories(int userId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT DISTINCT category FROM habits WHERE user_id = ? AND category IS NOT NULL AND category != ""',
+      [userId],
+    );
+    return result.map((row) => row['category'] as String).toList();
+  }
+
 
   Future close() async {
     final db = await instance.database;

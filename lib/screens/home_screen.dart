@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import 'timer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -65,11 +66,43 @@ class _HomeScreenState extends State<HomeScreen> {
       await DatabaseHelper.instance.removeHabitCompletion(habitId, todayStr);
     } else {
       await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+      
+      // Zkontroluj a odemkni achievementy
+      final unlocked = await DatabaseHelper.instance.checkAndUnlockAchievements(userId, habitId);
+      if (unlocked.isNotEmpty) {
+        final habit = habits.firstWhere((h) => h['id'] == habitId);
+        _showAchievementNotification(unlocked, habit['name']);
+      }
     }
     
     setState(() {
       completedToday[habitId] = !isCompleted;
     });
+  }
+
+  void _showAchievementNotification(List<String> unlocked, String habitName) {
+    final messages = {
+      '7_day_streak': '🎉 Úžasné! 7 dní v řadě s "$habitName"!',
+      '30_day_streak': '🏆 Neuvěřitelné! 30 dní v řadě s "$habitName"!',
+      '100_completions': '⭐ Fantastické! 100 splnění "$habitName"!',
+    };
+
+    for (var achievement in unlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(messages[achievement] ?? 'Ocenění odemčeno!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Zobrazit',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pushNamed(context, '/achievements');
+            },
+          ),
+        ),
+      );
+    }
   }
 
   int _getCompletedCount() {
@@ -286,12 +319,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                 final colorStr = habit['color'].toString().replaceAll('#', '');
                                 final color = Color(int.parse('0xFF$colorStr'));
 
+                                final hasTimer = (habit['has_timer'] ?? 0) == 1;
+                                
                                 return _buildHabitCard(
                                   habit: habit,
                                   icon: icon,
                                   color: color,
                                   isCompleted: isCompleted,
+                                  hasTimer: hasTimer,
                                   onTap: () => _toggleHabitCompletion(habitId),
+                                  onTimer: hasTimer ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => TimerScreen(habit: habit),
+                                      ),
+                                    );
+                                  } : null,
                                   onEdit: () async {
                                     await Navigator.pushNamed(
                                       context,
@@ -311,8 +355,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.pushNamed(context, '/add');
-          await _loadHabits();
+          final result = await Navigator.pushNamed(context, '/add');
+          if (result == true) {
+            await _loadHabits();
+          }
         },
         backgroundColor: Colors.white,
         child: const Icon(Icons.add, color: Colors.pink),
@@ -327,144 +373,200 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isCompleted,
     required VoidCallback onTap,
     required VoidCallback onEdit,
+    bool hasTimer = false,
+    VoidCallback? onTimer,
   }) {
-    // Počet splnění (streak)
-    final streak = 0; // TODO: vypočítat streak
-    
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onEdit,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isCompleted ? color.withOpacity(0.3) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isCompleted ? color : Colors.white,
-            width: isCompleted ? 3 : 2,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Ikona v kruhu
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: isCompleted ? color : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: color,
-                  width: 2,
-                ),
-              ),
-              child: Icon(
-                icon,
-                color: isCompleted ? Colors.white : color,
-                size: 35,
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.grey[300]!,
+                width: 1,
               ),
             ),
-            const SizedBox(height: 12),
-            // Název návyku
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                habit['name'],
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isCompleted ? Colors.white : Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // Popis nebo streak
-            if (habit['description']?.isNotEmpty ?? false)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  habit['description'],
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isCompleted 
-                        ? Colors.white.withOpacity(0.8) 
-                        : Colors.grey[600],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ikona v kruhu
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Název návyku
+                Text(
+                  habit['name'],
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            // Streak číslo dole
-            if (streak > 0)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$streak',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                const SizedBox(height: 4),
+                // Popis
+                if (habit['description']?.isNotEmpty ?? false)
+                  Text(
+                    habit['description'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
+              ],
+            ),
+          ),
+        ),
+        // Tři tečky v pravém horním rohu pro menu
+        Positioned(
+          top: 8,
+          right: 8,
+          child: PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              color: Colors.grey[600],
+              size: 20,
+            ),
+            onSelected: (value) {
+              if (value == 'edit') {
+                onEdit();
+              } else if (value == 'delete') {
+                _showDeleteDialog(habit['id'] as int);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 8),
+                    Text('Upravit'),
+                  ],
                 ),
               ),
-          ],
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Smazat', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        // Timer ikona vlevo dole (pokud má časovač)
+        if (hasTimer && onTimer != null)
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: GestureDetector(
+              onTap: onTimer,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.timer,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showDeleteDialog(int habitId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Smazat návyk'),
+        content: const Text('Opravdu chceš tento návyk smazat?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Zrušit'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Smazat', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteHabit(habitId);
+      await _loadHabits();
+    }
   }
 
   Widget _buildAddHabitCard() {
     return GestureDetector(
       onTap: () async {
-        await Navigator.pushNamed(context, '/add');
-        await _loadHabits();
+        final result = await Navigator.pushNamed(context, '/add');
+        if (result == true) {
+          await _loadHabits();
+        }
       },
       child: Container(
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.purple.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.white,
-            width: 2,
-            style: BorderStyle.solid,
+            color: Colors.grey[300]!,
+            width: 1,
           ),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 70,
-              height: 70,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.purple.withOpacity(0.3),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
-                ),
               ),
               child: const Icon(
                 Icons.add,
-                color: Colors.white,
-                size: 35,
+                color: Colors.purple,
+                size: 28,
               ),
             ),
             const SizedBox(height: 12),
             Text(
               'Přidat návyk',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Colors.purple,
               ),
             ),
           ],

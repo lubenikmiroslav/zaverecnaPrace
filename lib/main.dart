@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/database_helper.dart';
+import 'services/notification_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/add_habit_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/achievements_screen.dart';
+import 'screens/timer_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseHelper.instance.database;
+  await NotificationService.instance.initialize();
 
   final prefs = await SharedPreferences.getInstance();
   final savedEmail = prefs.getString('user_email');
@@ -97,6 +101,7 @@ class HabitTrackAppState extends State<HabitTrackApp> {
         '/home': (context) => const MainNavigation(),
         '/add': (context) => const AddHabitScreen(),
         '/profile': (context) => const ProfileScreen(),
+        '/achievements': (context) => const AchievementsScreen(),
       },
     );
   }

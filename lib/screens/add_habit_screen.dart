@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import '../services/notification_service.dart';
 
 class AddHabitScreen extends StatefulWidget {
   const AddHabitScreen({super.key});
@@ -13,9 +14,23 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _categoryController = TextEditingController();
+  final _timerDurationController = TextEditingController();
   Color selectedColor = Colors.pink;
   IconData selectedIcon = Icons.check_circle;
   int? habitId;
+  String? selectedReminderTime;
+  bool hasTimer = false;
+
+  final List<String> commonCategories = [
+    'Zdraví',
+    'Sport',
+    'Vzdělávání',
+    'Práce',
+    'Osobní',
+    'Společenské',
+    'Kreativita',
+  ];
 
   final List<Color> availableColors = [
     Colors.pink,
@@ -61,6 +76,10 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       habitId = habit['id'];
       _nameController.text = habit['name'] ?? '';
       _descriptionController.text = habit['description'] ?? '';
+      _categoryController.text = habit['category'] ?? '';
+      selectedReminderTime = habit['reminder_time'];
+      hasTimer = (habit['has_timer'] ?? 0) == 1;
+      _timerDurationController.text = habit['timer_duration']?.toString() ?? '';
       final colorStr = habit['color'].toString().replaceAll('#', '');
       selectedColor = Color(int.parse('0xFF$colorStr'));
       selectedIcon = IconData(int.parse(habit['icon']), fontFamily: 'MaterialIcons');
@@ -79,16 +98,54 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         'description': _descriptionController.text.trim(),
         'color': '#${selectedColor.value.toRadixString(16).substring(2)}',
         'icon': selectedIcon.codePoint.toString(),
+        'category': _categoryController.text.trim().isEmpty ? null : _categoryController.text.trim(),
+        'reminder_time': selectedReminderTime,
+        'has_timer': hasTimer ? 1 : 0,
+        'timer_duration': hasTimer ? (int.tryParse(_timerDurationController.text) ?? 0) : 0,
         if (habitId == null) 'created_at': DateTime.now().toIso8601String(),
       };
 
+      int newHabitId;
       if (habitId != null) {
         await DatabaseHelper.instance.updateHabit(habitId!, habitData);
+        newHabitId = habitId!;
       } else {
-        await DatabaseHelper.instance.insertHabit(habitData);
+        newHabitId = await DatabaseHelper.instance.insertHabit(habitData);
       }
 
-      Navigator.pop(context);
+      // Nastavit notifikaci, pokud je nastaven reminder time
+      if (selectedReminderTime != null && selectedReminderTime!.isNotEmpty) {
+        await NotificationService.instance.scheduleHabitReminder(
+          habitId: newHabitId,
+          habitName: _nameController.text.trim(),
+          time: selectedReminderTime!,
+        );
+      } else if (habitId != null) {
+        // Zrušit notifikaci, pokud byla odstraněna
+        await NotificationService.instance.cancelHabitReminder(habitId!);
+      }
+
+      if (mounted) {
+        Navigator.pop(context, true); // Vrátit true jako indikátor úspěchu
+      }
+    }
+  }
+
+  Future<void> _selectReminderTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: selectedReminderTime != null
+          ? TimeOfDay(
+              hour: int.parse(selectedReminderTime!.split(':')[0]),
+              minute: int.parse(selectedReminderTime!.split(':')[1]),
+            )
+          : TimeOfDay.now(),
+    );
+
+    if (time != null) {
+      setState(() {
+        selectedReminderTime = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      });
     }
   }
 
@@ -262,6 +319,146 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                   children: availableIcons.map((icon) => _iconButton(icon)).toList(),
                 ),
               ),
+              const SizedBox(height: 32),
+
+              // Kategorie
+              Text(
+                'Kategorie (volitelné)',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...commonCategories.map((cat) => FilterChip(
+                    label: Text(cat),
+                    selected: _categoryController.text == cat,
+                    onSelected: (selected) {
+                      setState(() {
+                        _categoryController.text = selected ? cat : '';
+                      });
+                    },
+                    selectedColor: selectedColor.withOpacity(0.3),
+                    checkmarkColor: selectedColor,
+                  )),
+                  ActionChip(
+                    label: const Text('+ Vlastní'),
+                    onPressed: () async {
+                      final custom = await showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          final controller = TextEditingController();
+                          return AlertDialog(
+                            title: const Text('Vlastní kategorie'),
+                            content: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(
+                                labelText: 'Název kategorie',
+                                hintText: 'Např. Ranní rutina',
+                              ),
+                              autofocus: true,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Zrušit'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                                child: const Text('Přidat'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (custom != null && custom.isNotEmpty) {
+                        setState(() {
+                          _categoryController.text = custom;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Časovač
+              SwitchListTile(
+                title: const Text(
+                  'Použít časovač',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Pro časové návyky (např. 30 min čtení)',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                ),
+                value: hasTimer,
+                activeColor: selectedColor,
+                onChanged: (value) {
+                  setState(() {
+                    hasTimer = value;
+                  });
+                },
+              ),
+              if (hasTimer) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _timerDurationController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Délka v minutách',
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: selectedColor),
+                    ),
+                    fillColor: Colors.white.withOpacity(0.1),
+                    filled: true,
+                    suffixText: 'min',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+              const SizedBox(height: 32),
+
+              // Připomínka
+              ListTile(
+                title: const Text(
+                  'Připomínka',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  selectedReminderTime ?? 'Nastavit čas připomínky',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (selectedReminderTime != null)
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            selectedReminderTime = null;
+                          });
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.access_time, color: Colors.white),
+                      onPressed: _selectReminderTime,
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 40),
 
               // Tlačítko uložit
@@ -353,6 +550,8 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _categoryController.dispose();
+    _timerDurationController.dispose();
     super.dispose();
   }
 }
