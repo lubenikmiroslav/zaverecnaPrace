@@ -16,6 +16,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   final _descriptionController = TextEditingController();
   final _categoryController = TextEditingController();
   final _timerDurationController = TextEditingController();
+  final _targetController = TextEditingController(text: '1');
   Color selectedColor = Colors.pink;
   IconData selectedIcon = Icons.check_circle;
   int? habitId;
@@ -67,6 +68,98 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     Icons.sports_soccer,
   ];
 
+  // Presety oblíbených návyků
+  late final List<Map<String, dynamic>> popularPresets = [
+    {
+      'name': 'Vyčistit zuby',
+      'description': 'Ráno a večer',
+      'color': Colors.orange,
+      'icon': Icons.brush,
+      'daily_target': 2,
+      'reminder_time': null,
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Zdraví',
+    },
+    {
+      'name': 'Žádný telefon po 21:00',
+      'description': 'Odlož mobil, připomínka v 20:30',
+      'color': Colors.redAccent,
+      'icon': Icons.nights_stay,
+      'daily_target': 1,
+      'reminder_time': '20:30',
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Wellbeing',
+    },
+    {
+      'name': 'Vypít 2 litry vody',
+      'description': 'Sleduj pitný režim (8× sklenice)',
+      'color': Colors.lightBlue,
+      'icon': Icons.water_drop,
+      'daily_target': 8,
+      'reminder_time': null,
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Zdraví',
+    },
+    {
+      'name': 'Ujít 10 000 kroků',
+      'description': 'Cíl 10k kroků (zatím manuálně)',
+      'color': Colors.green,
+      'icon': Icons.directions_walk,
+      'daily_target': 1,
+      'reminder_time': null,
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Sport',
+    },
+    {
+      'name': 'Meditace 30 minut',
+      'description': 'Vědomý klid, nastav časovač',
+      'color': Colors.teal,
+      'icon': Icons.self_improvement,
+      'daily_target': 1,
+      'reminder_time': null,
+      'has_timer': true,
+      'timer_duration': 30,
+      'category': 'Mindfulness',
+    },
+    {
+      'name': 'Ráno ustlat postel',
+      'description': 'Začni den pořádkem',
+      'color': Colors.purpleAccent,
+      'icon': Icons.bed,
+      'daily_target': 1,
+      'reminder_time': '07:30',
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Ranní rutina',
+    },
+    {
+      'name': 'Dny bez nikotinu',
+      'description': 'Držím se bez nikotinu',
+      'color': Colors.indigo,
+      'icon': Icons.smoke_free,
+      'daily_target': 1,
+      'reminder_time': null,
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Zdraví',
+    },
+    {
+      'name': 'Dny bez alkoholu',
+      'description': 'Žádný alkohol dnes',
+      'color': Colors.deepOrange,
+      'icon': Icons.wine_bar,
+      'daily_target': 1,
+      'reminder_time': null,
+      'has_timer': false,
+      'timer_duration': 0,
+      'category': 'Zdraví',
+    },
+  ];
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -80,10 +173,26 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       selectedReminderTime = habit['reminder_time'];
       hasTimer = (habit['has_timer'] ?? 0) == 1;
       _timerDurationController.text = habit['timer_duration']?.toString() ?? '';
+      _targetController.text = (habit['daily_target'] ?? 1).toString();
       final colorStr = habit['color'].toString().replaceAll('#', '');
       selectedColor = Color(int.parse('0xFF$colorStr'));
       selectedIcon = IconData(int.parse(habit['icon']), fontFamily: 'MaterialIcons');
     }
+  }
+
+  void _applyPreset(Map<String, dynamic> preset) {
+    setState(() {
+      habitId = null;
+      _nameController.text = preset['name'] ?? '';
+      _descriptionController.text = preset['description'] ?? '';
+      _categoryController.text = preset['category'] ?? '';
+      selectedColor = preset['color'] as Color? ?? Colors.pink;
+      selectedIcon = preset['icon'] as IconData? ?? Icons.check_circle;
+      selectedReminderTime = preset['reminder_time'] as String?;
+      hasTimer = preset['has_timer'] as bool? ?? false;
+      _timerDurationController.text = (preset['timer_duration'] ?? 0).toString();
+      _targetController.text = (preset['daily_target'] ?? 1).toString();
+    });
   }
 
   Future<void> _saveHabit() async {
@@ -102,6 +211,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         'reminder_time': selectedReminderTime,
         'has_timer': hasTimer ? 1 : 0,
         'timer_duration': hasTimer ? (int.tryParse(_timerDurationController.text) ?? 0) : 0,
+        'daily_target': int.tryParse(_targetController.text) ?? 1,
         if (habitId == null) 'created_at': DateTime.now().toIso8601String(),
       };
 
@@ -277,6 +387,112 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                 ),
                 maxLines: 2,
                 onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 32),
+
+              // Populární návyky
+              Text(
+                'Populární návyky',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: popularPresets.map((preset) {
+                    final presetColor = preset['color'] as Color? ?? Colors.white;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: ActionChip(
+                        backgroundColor: Colors.white.withOpacity(0.9),
+                        label: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              preset['name'] ?? '',
+                              style: TextStyle(
+                                color: presetColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if ((preset['description'] as String?)?.isNotEmpty ?? false)
+                              Text(
+                                preset['description'],
+                                style: TextStyle(color: presetColor.withOpacity(0.7), fontSize: 11),
+                              ),
+                          ],
+                        ),
+                        onPressed: () => _applyPreset(preset),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Kolikrát denně
+              Text(
+                'Kolikrát denně',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      final current = int.tryParse(_targetController.text) ?? 1;
+                      if (current > 1) {
+                        setState(() {
+                          _targetController.text = (current - 1).toString();
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.white),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _targetController,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.1),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: selectedColor),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final val = int.tryParse(v ?? '');
+                        if (val == null || val < 1) return 'Zadej alespoň 1';
+                        return null;
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      final current = int.tryParse(_targetController.text) ?? 1;
+                      setState(() {
+                        _targetController.text = (current + 1).toString();
+                      });
+                    },
+                    icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 

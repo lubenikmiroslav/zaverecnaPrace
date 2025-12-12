@@ -14,7 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String nickname = '';
   int userId = 0;
   List<Map<String, dynamic>> habits = [];
-  Map<int, bool> completedToday = {};
+  Map<int, int> completedTodayCount = {};
   bool isLoading = true;
 
   @override
@@ -43,40 +43,49 @@ class _HomeScreenState extends State<HomeScreen> {
     final data = await DatabaseHelper.instance.getHabits(userId);
     final todayStr = DateTime.now().toIso8601String().split('T').first;
     
-    Map<int, bool> todayStatus = {};
+    Map<int, int> todayCount = {};
     for (var habit in data) {
-      final isCompleted = await DatabaseHelper.instance.isHabitCompletedForDate(
+      final count = await DatabaseHelper.instance.getDailyCompletionCount(
         habit['id'],
         todayStr,
       );
-      todayStatus[habit['id']] = isCompleted;
+      todayCount[habit['id']] = count;
     }
     
     setState(() {
       habits = data;
-      completedToday = todayStatus;
+      completedTodayCount = todayCount;
     });
   }
 
   Future<void> _toggleHabitCompletion(int habitId) async {
     final todayStr = DateTime.now().toIso8601String().split('T').first;
-    final isCompleted = completedToday[habitId] ?? false;
+    final habit = habits.firstWhere((h) => h['id'] == habitId);
+    final target = (habit['daily_target'] ?? 1) as int;
+    final current = completedTodayCount[habitId] ?? 0;
     
-    if (isCompleted) {
-      await DatabaseHelper.instance.removeHabitCompletion(habitId, todayStr);
-    } else {
-      await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
-      
-      // Zkontroluj a odemkni achievementy
-      final unlocked = await DatabaseHelper.instance.checkAndUnlockAchievements(userId, habitId);
-      if (unlocked.isNotEmpty) {
-        final habit = habits.firstWhere((h) => h['id'] == habitId);
-        _showAchievementNotification(unlocked, habit['name']);
-      }
+    // Pokud uživatel klikne víckrát než cíl: reset na 0
+    if (current + 1 > target) {
+      await DatabaseHelper.instance.removeHabitCompletionsForDate(habitId, todayStr);
+      setState(() {
+        completedTodayCount[habitId] = 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Resetováno pro dnešek')),
+      );
+      return;
+    }
+
+    await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+    
+    // Zkontroluj a odemkni achievementy
+    final unlocked = await DatabaseHelper.instance.checkAndUnlockAchievements(userId, habitId);
+    if (unlocked.isNotEmpty) {
+      _showAchievementNotification(unlocked, habit['name']);
     }
     
     setState(() {
-      completedToday[habitId] = !isCompleted;
+      completedTodayCount[habitId] = current + 1;
     });
   }
 
@@ -106,7 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int _getCompletedCount() {
-    return completedToday.values.where((v) => v).length;
+    int done = 0;
+    for (var habit in habits) {
+      final id = habit['id'] as int;
+      final target = (habit['daily_target'] ?? 1) as int;
+      final current = completedTodayCount[id] ?? 0;
+      if (current >= target) done++;
+    }
+    return done;
   }
 
   @override
@@ -268,87 +284,89 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-              // Habits Grid
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                    : habits.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.emoji_nature,
-                                  size: 64,
-                                  color: Colors.white.withOpacity(0.7),
+                  // Habits List
+                  Expanded(
+                    child: isLoading
+                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        : habits.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.emoji_nature,
+                                      size: 64,
+                                      color: Colors.white.withOpacity(0.7),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Zatím nemáš žádné návyky',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Zatím nemáš žádné návyky',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _loadHabits,
-                            color: Colors.white,
-                            child: GridView.builder(
-                              padding: const EdgeInsets.all(20),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.85,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: habits.length + 1, // +1 pro tlačítko "Přidat"
-                              itemBuilder: (context, index) {
-                                if (index == habits.length) {
-                                  // Tlačítko pro přidání návyku
-                                  return _buildAddHabitCard();
-                                }
-                                
-                                final habit = habits[index];
-                                final habitId = habit['id'] as int;
-                                final isCompleted = completedToday[habitId] ?? false;
-                                final iconCode = int.tryParse(habit['icon'] ?? '') ?? Icons.check.codePoint;
-                                final icon = IconData(iconCode, fontFamily: 'MaterialIcons');
-                                final colorStr = habit['color'].toString().replaceAll('#', '');
-                                final color = Color(int.parse('0xFF$colorStr'));
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _loadHabits,
+                                color: Colors.white,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.all(20),
+                                  itemCount: habits.length + 1,
+                                  itemBuilder: (context, index) {
+                                    if (index == habits.length) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: _buildAddHabitCard(),
+                                      );
+                                    }
+                                    final habit = habits[index];
+                                    final habitId = habit['id'] as int;
+                                    final iconCode = int.tryParse(habit['icon'] ?? '') ?? Icons.check.codePoint;
+                                    final icon = IconData(iconCode, fontFamily: 'MaterialIcons');
+                                    final colorStr = habit['color'].toString().replaceAll('#', '');
+                                    final color = Color(int.parse('0xFF$colorStr'));
+                                    final hasTimer = (habit['has_timer'] ?? 0) == 1;
+                                    final target = (habit['daily_target'] ?? 1) as int;
+                                    final current = completedTodayCount[habitId] ?? 0;
 
-                                final hasTimer = (habit['has_timer'] ?? 0) == 1;
-                                
-                                return _buildHabitCard(
-                                  habit: habit,
-                                  icon: icon,
-                                  color: color,
-                                  isCompleted: isCompleted,
-                                  hasTimer: hasTimer,
-                                  onTap: () => _toggleHabitCompletion(habitId),
-                                  onTimer: hasTimer ? () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => TimerScreen(habit: habit),
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _buildHabitCard(
+                                        habit: habit,
+                                        icon: icon,
+                                        color: color,
+                                        isCompleted: current >= target,
+                                        currentCount: current,
+                                        targetCount: target,
+                                        hasTimer: hasTimer,
+                                        onTap: () => _toggleHabitCompletion(habitId),
+                                        onTimer: hasTimer
+                                            ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => TimerScreen(habit: habit),
+                                                  ),
+                                                );
+                                              }
+                                            : null,
+                                        onEdit: () async {
+                                          await Navigator.pushNamed(
+                                            context,
+                                            '/add',
+                                            arguments: habit,
+                                          );
+                                          await _loadHabits();
+                                        },
                                       ),
                                     );
-                                  } : null,
-                                  onEdit: () async {
-                                    await Navigator.pushNamed(
-                                      context,
-                                      '/add',
-                                      arguments: habit,
-                                    );
-                                    await _loadHabits();
                                   },
-                                );
-                              },
-                            ),
-                          ),
-              ),
+                                ),
+                              ),
+                  ),
             ],
           ),
         ),
@@ -371,133 +389,159 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     required Color color,
     required bool isCompleted,
+    required int currentCount,
+    required int targetCount,
     required VoidCallback onTap,
     required VoidCallback onEdit,
     bool hasTimer = false,
     VoidCallback? onTimer,
   }) {
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(16),
+    final progress = (currentCount / targetCount).clamp(0.0, 1.0).toDouble();
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          // Full-width translucent bar as background
+          Container(
+            height: 80,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
-              ),
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.grey[300]!, width: 1),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                // Ikona v kruhu
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Název návyku
-                Text(
-                  habit['name'],
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                // Popis
-                if (habit['description']?.isNotEmpty ?? false)
-                  Text(
-                    habit['description'],
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                // Filled progress overlay
+                FractionallySizedBox(
+                  widthFactor: progress,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      // Texts
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              habit['name'],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (habit['description']?.isNotEmpty ?? false)
+                              Text(
+                                habit['description'],
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '$currentCount / $targetCount',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Icon bubble on right
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: color.withOpacity(0.6), width: 2),
+                        ),
+                        child: Icon(icon, color: color, size: 24),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-        // Tři tečky v pravém horním rohu pro menu
-        Positioned(
-          top: 8,
-          right: 8,
-          child: PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert,
-              color: Colors.grey[600],
-              size: 20,
-            ),
-            onSelected: (value) {
-              if (value == 'edit') {
-                onEdit();
-              } else if (value == 'delete') {
-                _showDeleteDialog(habit['id'] as int);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20),
-                    SizedBox(width: 8),
-                    Text('Upravit'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 20, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Smazat', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Timer ikona vlevo dole (pokud má časovač)
-        if (hasTimer && onTimer != null)
+          // Menu (3 dots) in top-right
           Positioned(
-            bottom: 8,
-            left: 8,
-            child: GestureDetector(
-              onTap: onTimer,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.9),
-                  shape: BoxShape.circle,
+            top: 6,
+            right: 8,
+            child: PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.more_vert, color: Colors.grey[700], size: 18),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  onEdit();
+                } else if (value == 'delete') {
+                  _showDeleteDialog(habit['id'] as int);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20),
+                      SizedBox(width: 8),
+                      Text('Upravit'),
+                    ],
+                  ),
                 ),
-                child: const Icon(
-                  Icons.timer,
-                  color: Colors.white,
-                  size: 16,
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Smazat', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Timer icon bottom-left
+          if (hasTimer && onTimer != null)
+            Positioned(
+              bottom: 8,
+              left: 12,
+              child: GestureDetector(
+                onTap: onTimer,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.timer,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 

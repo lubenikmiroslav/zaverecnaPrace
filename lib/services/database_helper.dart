@@ -18,7 +18,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 4, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 5, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -57,6 +57,9 @@ class DatabaseHelper {
       // Přidat sloupec pro profilovou fotku
       await db.execute('ALTER TABLE users ADD COLUMN profile_photo_path TEXT');
     }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE habits ADD COLUMN daily_target INTEGER DEFAULT 1');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -84,6 +87,7 @@ class DatabaseHelper {
         reminder_time TEXT,
         has_timer INTEGER DEFAULT 0,
         timer_duration INTEGER DEFAULT 0,
+        daily_target INTEGER DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
     ''');
@@ -172,6 +176,19 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  // ✅ Denní počet splnění pro návyk
+  Future<int> getDailyCompletionCount(int habitId, String date) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM habit_logs WHERE habit_id = ? AND date = ?',
+      [habitId, date],
+    );
+    if (result.isNotEmpty) {
+      return (result.first['cnt'] as int?) ?? 0;
+    }
+    return 0;
   }
 
   // ✅ Smazání návyku
@@ -307,6 +324,16 @@ class DatabaseHelper {
 
   // ✅ Odstranění splnění návyku (pro toggle)
   Future<int> removeHabitCompletion(int habitId, String date) async {
+    final db = await database;
+    return await db.delete(
+      'habit_logs',
+      where: 'habit_id = ? AND date = ?',
+      whereArgs: [habitId, date],
+    );
+  }
+
+  // ✅ Smazání všech splnění návyku pro daný den (reset)
+  Future<int> removeHabitCompletionsForDate(int habitId, String date) async {
     final db = await database;
     return await db.delete(
       'habit_logs',
