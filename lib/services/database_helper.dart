@@ -18,7 +18,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 5, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 6, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -60,6 +60,11 @@ class DatabaseHelper {
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE habits ADD COLUMN daily_target INTEGER DEFAULT 1');
     }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE habits ADD COLUMN affirmation TEXT');
+      await db.execute('ALTER TABLE habits ADD COLUMN sync_with_health INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE habits ADD COLUMN health_metric_type TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -88,6 +93,9 @@ class DatabaseHelper {
         has_timer INTEGER DEFAULT 0,
         timer_duration INTEGER DEFAULT 0,
         daily_target INTEGER DEFAULT 1,
+        affirmation TEXT,
+        sync_with_health INTEGER DEFAULT 0,
+        health_metric_type TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
     ''');

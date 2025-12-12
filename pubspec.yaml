@@ -22,6 +22,7 @@ dependencies:
   intl: ^0.19.0
   image_picker: ^1.0.7
   path_provider: ^2.1.1
+  # health: ^10.1.0  # Temporarily disabled due to compatibility issues
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +34,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+  fonts:
+    - family: Howdybun
+      fonts:
+        - asset: assets/fonts/Howdybun.ttf
 
 flutter_launcher_icons:
   android: true

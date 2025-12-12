@@ -110,115 +110,170 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistiky'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildOverviewCards(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Přehled návyků'),
-            const SizedBox(height: 12),
-            _buildHabitStats(),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.orange.shade400,
+              Colors.pink.shade400,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Modern App Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'Statistiky',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 48), // Balance
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildModernOverviewCards(),
+                      const SizedBox(height: 24),
+                      _buildModernSectionTitle('Přehled návyků'),
+                      const SizedBox(height: 16),
+                      _buildHabitStats(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildOverviewCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Celkem návyků',
-                '${stats['habitsCount'] ?? 0}',
-                Icons.list_alt,
-                Colors.blue,
+  Widget _buildModernOverviewCards() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildModernStatCard(
+                  'Celkem návyků',
+                  '${stats['habitsCount'] ?? 0}',
+                  Icons.list_alt,
+                  Colors.blue,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Celkem splnění',
-                '${stats['totalCompletions'] ?? 0}',
-                Icons.check_circle,
-                Colors.green,
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildModernStatCard(
+                  'Celkem splnění',
+                  '${stats['totalCompletions'] ?? 0}',
+                  Icons.check_circle,
+                  Colors.green,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Za 7 dní',
-                '${stats['weekCompletions'] ?? 0}',
-                Icons.date_range,
-                Colors.orange,
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildModernStatCard(
+                  'Za 7 dní',
+                  '${stats['weekCompletions'] ?? 0}',
+                  Icons.date_range,
+                  Colors.orange,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Za 30 dní',
-                '${stats['monthCompletions'] ?? 0}',
-                Icons.calendar_month,
-                Colors.purple,
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildModernStatCard(
+                  'Za 30 dní',
+                  '${stats['monthCompletions'] ?? 0}',
+                  Icons.calendar_month,
+                  Colors.purple,
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 2,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildModernStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: color),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernSectionTitle(String title) {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: FontWeight.bold,
+        color: Colors.white,
       ),
     );
   }
@@ -255,62 +310,79 @@ class _StatsScreenState extends State<StatsScreen> {
         final icon = IconData(iconCode, fontFamily: 'MaterialIcons');
         final color = Color(int.parse('0xFF${habit['color'].toString().replaceAll('#', '')}'));
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, color: color, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        habit['name'],
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      habit['name'],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMiniStat(
-                        'Aktuální série',
-                        '$streak dní',
-                        Icons.local_fire_department,
-                        Colors.orange,
-                      ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMiniStat(
+                      'Aktuální série',
+                      '$streak dní',
+                      Icons.local_fire_department,
+                      Colors.orange,
                     ),
-                    Expanded(
-                      child: _buildMiniStat(
-                        'Celkem splnění',
-                        '${dates.length}×',
-                        Icons.done_all,
-                        Colors.green,
-                      ),
+                  ),
+                  Expanded(
+                    child: _buildMiniStat(
+                      'Celkem splnění',
+                      '${dates.length}×',
+                      Icons.done_all,
+                      Colors.green,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildProgressBar(completionRate, color),
-                const SizedBox(height: 4),
-                Text(
-                  'Úspěšnost: ${completionRate.toStringAsFixed(0)}% (posledních 30 dní)',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 12),
-                _buildWeeklyChart(dates, color),
-                const SizedBox(height: 16),
-                _buildMonthlyTrendChart(dates, color),
-              ],
-            ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildProgressBar(completionRate, color),
+              const SizedBox(height: 8),
+              Text(
+                'Úspěšnost: ${completionRate.toStringAsFixed(0)}% (posledních 30 dní)',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 20),
+              _buildWeeklyChart(dates, color),
+              const SizedBox(height: 20),
+              _buildMonthlyTrendChart(dates, color),
+            ],
           ),
         );
       }).toList(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import '../services/health_service.dart';
 import 'timer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int userId = 0;
   List<Map<String, dynamic>> habits = [];
   Map<int, int> completedTodayCount = {};
+  Map<int, int> habitStreaks = {};
   bool isLoading = true;
 
   @override
@@ -44,18 +46,97 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayStr = DateTime.now().toIso8601String().split('T').first;
     
     Map<int, int> todayCount = {};
+    Map<int, int> streaks = {};
+    
     for (var habit in data) {
+      final habitId = habit['id'] as int;
       final count = await DatabaseHelper.instance.getDailyCompletionCount(
-        habit['id'],
+        habitId,
         todayStr,
       );
-      todayCount[habit['id']] = count;
+      todayCount[habitId] = count;
+      
+      // Načíst streak
+      final streak = await DatabaseHelper.instance.getHabitStreak(habitId);
+      streaks[habitId] = streak;
+      
+      // Pokud je návyk synchronizován se zdravím, načíst data
+      if ((habit['sync_with_health'] ?? 0) == 1) {
+        await _syncHealthData(habit);
+      }
     }
     
     setState(() {
       habits = data;
       completedTodayCount = todayCount;
+      habitStreaks = streaks;
     });
+  }
+  
+  Future<void> _syncHealthData(Map<String, dynamic> habit) async {
+    try {
+      final healthService = HealthService.instance;
+      await healthService.initialize();
+      
+      if (!await healthService.isAvailable()) {
+        final granted = await healthService.requestPermissions();
+        if (!granted) return; // Uživatel nepovolil oprávnění
+      }
+      
+      final metricType = habit['health_metric_type'] as String?;
+      if (metricType == null) return;
+      
+      final habitId = habit['id'] as int;
+      final todayStr = DateTime.now().toIso8601String().split('T').first;
+      
+      int? healthValue;
+      int target = (habit['daily_target'] ?? 1) as int;
+      
+      switch (metricType) {
+        case 'steps':
+          healthValue = await healthService.getStepsToday();
+          // Pro kroky: pokud máš 10000 kroků jako cíl, pak 10000 kroků = 1 splnění
+          if (healthValue != null && target > 0) {
+            final completionCount = (healthValue >= (target * 1000)) ? 1 : 0; // 10k kroků = 1 splnění
+            final existingCount = await DatabaseHelper.instance.getDailyCompletionCount(habitId, todayStr);
+            
+            if (completionCount != existingCount) {
+              await DatabaseHelper.instance.removeHabitCompletionsForDate(habitId, todayStr);
+              if (completionCount > 0) {
+                await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+              }
+              setState(() {
+                completedTodayCount[habitId] = completionCount;
+              });
+            }
+          }
+          break;
+        case 'water':
+          final waterLiters = await healthService.getWaterToday();
+          if (waterLiters != null && target > 0) {
+            // Pro vodu: pokud máš 2 litry jako cíl, pak 2 litry = 1 splnění
+            final completionCount = (waterLiters >= target) ? 1 : 0;
+            final existingCount = await DatabaseHelper.instance.getDailyCompletionCount(habitId, todayStr);
+            
+            if (completionCount != existingCount) {
+              await DatabaseHelper.instance.removeHabitCompletionsForDate(habitId, todayStr);
+              if (completionCount > 0) {
+                await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+              }
+              setState(() {
+                completedTodayCount[habitId] = completionCount;
+              });
+            }
+          }
+          break;
+        case 'calories':
+          // TODO: implementovat kalorie
+          break;
+      }
+    } catch (e) {
+      print('Error syncing health data: $e');
+      // Tichá chyba - nechceme rušit uživatele
+    }
   }
 
   Future<void> _toggleHabitCompletion(int habitId) async {
@@ -86,6 +167,12 @@ class _HomeScreenState extends State<HomeScreen> {
     
     setState(() {
       completedTodayCount[habitId] = current + 1;
+    });
+    
+    // Aktualizovat streak
+    final newStreak = await DatabaseHelper.instance.getHabitStreak(habitId);
+    setState(() {
+      habitStreaks[habitId] = newStreak;
     });
   }
 
@@ -132,152 +219,132 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
 
     return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.orange.shade300,
-                    Colors.pink.shade300,
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      nickname.isNotEmpty ? nickname[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.pink,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    nickname.isNotEmpty ? nickname : 'Uživatel',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Domů'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Můj účet'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/profile');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Nastavení'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to settings
-              },
-            ),
-          ],
-        ),
-      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.orange.shade300,
-              Colors.pink.shade300,
-              Colors.purple.shade300,
+              Colors.orange.shade400,
+              Colors.pink.shade400,
             ],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // App Bar s hamburger menu a profile ikonou
+              // Modern App Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Builder(
-                      builder: (context) => IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                      ),
-                    ),
                     Text(
                       'HabitTrack',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Howdybun',
+                        fontSize: 32,
+                        fontWeight: FontWeight.normal,
                         color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.person, color: Colors.white),
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/profile');
-                      },
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/profile'),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                        ),
+                        child: Icon(Icons.person, color: Colors.white, size: 22),
+                      ),
                     ),
                   ],
                 ),
               ),
               
-              // Progress indicator
+              // Modern Progress Card
               if (totalCount > 0)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      Text(
-                        'Dnešní pokrok',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$completedCount z $totalCount',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Dnešní pokrok',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '${(progress * 100).toInt()}%',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.pink.shade400,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$completedCount',
+                            style: TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.pink.shade400,
+                              height: 1,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8, left: 4),
+                            child: Text(
+                              '/ $totalCount',
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: Colors.grey[400],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         child: LinearProgressIndicator(
                           value: progress,
-                          minHeight: 8,
-                          backgroundColor: Colors.white.withOpacity(0.3),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          minHeight: 10,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.pink.shade400),
                         ),
                       ),
                     ],
@@ -342,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         currentCount: current,
                                         targetCount: target,
                                         hasTimer: hasTimer,
+                                        streak: habitStreaks[habitId] ?? 0,
                                         onTap: () => _toggleHabitCompletion(habitId),
                                         onTimer: hasTimer
                                             ? () {
@@ -371,16 +439,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.pushNamed(context, '/add');
-          if (result == true) {
-            await _loadHabits();
-          }
-        },
-        backgroundColor: Colors.white,
-        child: const Icon(Icons.add, color: Colors.pink),
-      ),
     );
   }
 
@@ -395,19 +453,27 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onEdit,
     bool hasTimer = false,
     VoidCallback? onTimer,
+    int streak = 0,
   }) {
     final progress = (currentCount / targetCount).clamp(0.0, 1.0).toDouble();
+    final affirmation = habit['affirmation'] as String?;
     return GestureDetector(
       onTap: onTap,
       child: Stack(
         children: [
-          // Full-width translucent bar as background
+          // Modern card design
           Container(
-            height: 80,
+            height: 90,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.grey[300]!, width: 1),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Stack(
               children: [
@@ -416,8 +482,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   widthFactor: progress,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(18),
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
@@ -441,39 +507,96 @@ class _HomeScreenState extends State<HomeScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (habit['description']?.isNotEmpty ?? false)
-                              Text(
-                                habit['description'],
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
+                            if (affirmation != null && affirmation.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  affirmation,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: color.withOpacity(0.8),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (habit['description']?.isNotEmpty ?? false)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  habit['description'],
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             const SizedBox(height: 6),
-                            Text(
-                              '$currentCount / $targetCount',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  '$currentCount / $targetCount',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                if (streak > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.local_fire_department, size: 12, color: Colors.orange),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '$streak',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Icon bubble on right
+                      // Modern icon on right
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          gradient: LinearGradient(
+                            colors: [color, color.withOpacity(0.7)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           shape: BoxShape.circle,
-                          border: Border.all(color: color.withOpacity(0.6), width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: Icon(icon, color: color, size: 24),
+                        child: Icon(icon, color: Colors.white, size: 26),
                       ),
                     ],
                   ),
@@ -483,11 +606,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           // Menu (3 dots) in top-right
           Positioned(
-            top: 6,
+            top: 8,
             right: 8,
             child: PopupMenuButton<String>(
               padding: EdgeInsets.zero,
-              icon: Icon(Icons.more_vert, color: Colors.grey[700], size: 18),
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.more_vert, color: Colors.grey[600], size: 18),
+              ),
               onSelected: (value) {
                 if (value == 'edit') {
                   onEdit();
@@ -579,41 +709,78 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 90,
         decoration: BoxDecoration(
-          color: Colors.purple.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.grey[300]!,
-            width: 1,
+            color: Colors.grey[200]!,
+            width: 2,
+            style: BorderStyle.solid,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.3),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.purple,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Přidat návyk',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.purple,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.pink.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.pink.shade400, Colors.pink.shade300],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Přidat návyk',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Začni nový návyk',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -17,11 +17,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   final _categoryController = TextEditingController();
   final _timerDurationController = TextEditingController();
   final _targetController = TextEditingController(text: '1');
+  final _affirmationController = TextEditingController();
   Color selectedColor = Colors.pink;
   IconData selectedIcon = Icons.check_circle;
   int? habitId;
   String? selectedReminderTime;
   bool hasTimer = false;
+  bool syncWithHealth = false;
+  String? selectedHealthMetric;
 
   final List<String> commonCategories = [
     'Zdraví',
@@ -80,6 +83,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Zdraví',
+      'affirmation': 'I AM HEALTHY + CLEAN',
     },
     {
       'name': 'Žádný telefon po 21:00',
@@ -91,6 +95,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Wellbeing',
+      'affirmation': 'I AM PRESENT + FOCUSED',
     },
     {
       'name': 'Vypít 2 litry vody',
@@ -102,10 +107,13 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Zdraví',
+      'affirmation': 'I AM HYDRATED + ENERGETIC',
+      'sync_with_health': true,
+      'health_metric_type': 'water',
     },
     {
       'name': 'Ujít 10 000 kroků',
-      'description': 'Cíl 10k kroků (zatím manuálně)',
+      'description': 'Cíl 10k kroků',
       'color': Colors.green,
       'icon': Icons.directions_walk,
       'daily_target': 1,
@@ -113,6 +121,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Sport',
+      'affirmation': 'I AM STRONG + ATHLETIC',
+      'sync_with_health': true,
+      'health_metric_type': 'steps',
     },
     {
       'name': 'Meditace 30 minut',
@@ -124,6 +135,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': true,
       'timer_duration': 30,
       'category': 'Mindfulness',
+      'affirmation': 'I AM CALM + CENTERED',
     },
     {
       'name': 'Ráno ustlat postel',
@@ -135,6 +147,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Ranní rutina',
+      'affirmation': 'I AM ORGANIZED + PRODUCTIVE',
     },
     {
       'name': 'Dny bez nikotinu',
@@ -146,6 +159,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Zdraví',
+      'affirmation': 'I AM FREE + HEALTHY',
     },
     {
       'name': 'Dny bez alkoholu',
@@ -157,6 +171,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'has_timer': false,
       'timer_duration': 0,
       'category': 'Zdraví',
+      'affirmation': 'I AM CLEAR + STRONG',
     },
   ];
 
@@ -174,6 +189,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       hasTimer = (habit['has_timer'] ?? 0) == 1;
       _timerDurationController.text = habit['timer_duration']?.toString() ?? '';
       _targetController.text = (habit['daily_target'] ?? 1).toString();
+      _affirmationController.text = habit['affirmation'] ?? '';
+      syncWithHealth = (habit['sync_with_health'] ?? 0) == 1;
+      selectedHealthMetric = habit['health_metric_type'];
       final colorStr = habit['color'].toString().replaceAll('#', '');
       selectedColor = Color(int.parse('0xFF$colorStr'));
       selectedIcon = IconData(int.parse(habit['icon']), fontFamily: 'MaterialIcons');
@@ -192,6 +210,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       hasTimer = preset['has_timer'] as bool? ?? false;
       _timerDurationController.text = (preset['timer_duration'] ?? 0).toString();
       _targetController.text = (preset['daily_target'] ?? 1).toString();
+      _affirmationController.text = preset['affirmation'] ?? '';
+      syncWithHealth = preset['sync_with_health'] as bool? ?? false;
+      selectedHealthMetric = preset['health_metric_type'] as String?;
     });
   }
 
@@ -212,6 +233,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         'has_timer': hasTimer ? 1 : 0,
         'timer_duration': hasTimer ? (int.tryParse(_timerDurationController.text) ?? 0) : 0,
         'daily_target': int.tryParse(_targetController.text) ?? 1,
+        'affirmation': _affirmationController.text.trim().isEmpty ? null : _affirmationController.text.trim(),
+        'sync_with_health': 0,  // Disabled
+        'health_metric_type': null,  // Disabled
         if (habitId == null) 'created_at': DateTime.now().toIso8601String(),
       };
 
@@ -493,6 +517,37 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     icon: const Icon(Icons.add_circle_outline, color: Colors.white),
                   ),
                 ],
+              ),
+              const SizedBox(height: 32),
+
+              // Affirmation
+              Text(
+                'Motivační zpráva (volitelné)',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _affirmationController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Např. "I AM STRONG + ATHLETIC"',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: selectedColor),
+                  ),
+                  fillColor: Colors.white.withOpacity(0.1),
+                  filled: true,
+                ),
+                maxLines: 2,
               ),
               const SizedBox(height: 32),
 
