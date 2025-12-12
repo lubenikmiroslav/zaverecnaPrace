@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import 'timer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,7 +14,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String nickname = '';
   int userId = 0;
   List<Map<String, dynamic>> habits = [];
-  Map<int, bool> completedToday = {}; // stav splnění pro dnešní den
+  Map<int, bool> completedToday = {};
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -26,138 +28,549 @@ class _HomeScreenState extends State<HomeScreen> {
     nickname = prefs.getString('nickname') ?? '';
     final email = prefs.getString('user_email');
     if (email != null) {
-      final user = await DatabaseHelper.instance.loginUser(email, '');
+      final user = await DatabaseHelper.instance.getUserByEmail(email);
       if (user != null) {
         userId = user['id'];
         await _loadHabits();
       }
     }
-    setState(() {});
+    setState(() {
+      isLoading = false;
+    });
   }
 
   Future<void> _loadHabits() async {
     final data = await DatabaseHelper.instance.getHabits(userId);
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    
+    Map<int, bool> todayStatus = {};
+    for (var habit in data) {
+      final isCompleted = await DatabaseHelper.instance.isHabitCompletedForDate(
+        habit['id'],
+        todayStr,
+      );
+      todayStatus[habit['id']] = isCompleted;
+    }
+    
     setState(() {
       habits = data;
-      completedToday = {}; // reset stavu při načtení
+      completedToday = todayStatus;
     });
   }
 
-  Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_email');
-    await prefs.remove('nickname');
-    Navigator.pushReplacementNamed(context, '/');
-  }
-
-  Future<void> _deleteHabit(int habitId) async {
-    await DatabaseHelper.instance.deleteHabit(habitId);
-    await _loadHabits();
-  }
-
-  Future<void> _markHabitCompleted(int habitId) async {
-    await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+  Future<void> _toggleHabitCompletion(int habitId) async {
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    final isCompleted = completedToday[habitId] ?? false;
+    
+    if (isCompleted) {
+      await DatabaseHelper.instance.removeHabitCompletion(habitId, todayStr);
+    } else {
+      await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
+      
+      // Zkontroluj a odemkni achievementy
+      final unlocked = await DatabaseHelper.instance.checkAndUnlockAchievements(userId, habitId);
+      if (unlocked.isNotEmpty) {
+        final habit = habits.firstWhere((h) => h['id'] == habitId);
+        _showAchievementNotification(unlocked, habit['name']);
+      }
+    }
+    
     setState(() {
-      completedToday[habitId] = true;
+      completedToday[habitId] = !isCompleted;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Návyk označen jako splněný')),
-    );
+  }
+
+  void _showAchievementNotification(List<String> unlocked, String habitName) {
+    final messages = {
+      '7_day_streak': '🎉 Úžasné! 7 dní v řadě s "$habitName"!',
+      '30_day_streak': '🏆 Neuvěřitelné! 30 dní v řadě s "$habitName"!',
+      '100_completions': '⭐ Fantastické! 100 splnění "$habitName"!',
+    };
+
+    for (var achievement in unlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(messages[achievement] ?? 'Ocenění odemčeno!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Zobrazit',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pushNamed(context, '/achievements');
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  int _getCompletedCount() {
+    return completedToday.values.where((v) => v).length;
   }
 
   @override
   Widget build(BuildContext context) {
+    final completedCount = _getCompletedCount();
+    final totalCount = habits.length;
+    final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Moje návyky – $nickname'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.orange.shade300,
+                    Colors.pink.shade300,
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      nickname.isNotEmpty ? nickname[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.pink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    nickname.isNotEmpty ? nickname : 'Uživatel',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Domů'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Můj účet'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Nastavení'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to settings
+              },
+            ),
+          ],
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.orange.shade300,
+              Colors.pink.shade300,
+              Colors.purple.shade300,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // App Bar s hamburger menu a profile ikonou
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      ),
+                    ),
+                    Text(
+                      'HabitTrack',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.person, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/profile');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Progress indicator
+              if (totalCount > 0)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Dnešní pokrok',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '$completedCount z $totalCount',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Habits Grid
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : habits.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.emoji_nature,
+                                  size: 64,
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Zatím nemáš žádné návyky',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadHabits,
+                            color: Colors.white,
+                            child: GridView.builder(
+                              padding: const EdgeInsets.all(20),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.85,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                              ),
+                              itemCount: habits.length + 1, // +1 pro tlačítko "Přidat"
+                              itemBuilder: (context, index) {
+                                if (index == habits.length) {
+                                  // Tlačítko pro přidání návyku
+                                  return _buildAddHabitCard();
+                                }
+                                
+                                final habit = habits[index];
+                                final habitId = habit['id'] as int;
+                                final isCompleted = completedToday[habitId] ?? false;
+                                final iconCode = int.tryParse(habit['icon'] ?? '') ?? Icons.check.codePoint;
+                                final icon = IconData(iconCode, fontFamily: 'MaterialIcons');
+                                final colorStr = habit['color'].toString().replaceAll('#', '');
+                                final color = Color(int.parse('0xFF$colorStr'));
+
+                                final hasTimer = (habit['has_timer'] ?? 0) == 1;
+                                
+                                return _buildHabitCard(
+                                  habit: habit,
+                                  icon: icon,
+                                  color: color,
+                                  isCompleted: isCompleted,
+                                  hasTimer: hasTimer,
+                                  onTap: () => _toggleHabitCompletion(habitId),
+                                  onTimer: hasTimer ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => TimerScreen(habit: habit),
+                                      ),
+                                    );
+                                  } : null,
+                                  onEdit: () async {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      '/add',
+                                      arguments: habit,
+                                    );
+                                    await _loadHabits();
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.pushNamed(context, '/add');
+          if (result == true) {
+            await _loadHabits();
+          }
+        },
+        backgroundColor: Colors.white,
+        child: const Icon(Icons.add, color: Colors.pink),
+      ),
+    );
+  }
+
+  Widget _buildHabitCard({
+    required Map<String, dynamic> habit,
+    required IconData icon,
+    required Color color,
+    required bool isCompleted,
+    required VoidCallback onTap,
+    required VoidCallback onEdit,
+    bool hasTimer = false,
+    VoidCallback? onTimer,
+  }) {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.grey[300]!,
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ikona v kruhu
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Název návyku
+                Text(
+                  habit['name'],
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                // Popis
+                if (habit['description']?.isNotEmpty ?? false)
+                  Text(
+                    habit['description'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        // Tři tečky v pravém horním rohu pro menu
+        Positioned(
+          top: 8,
+          right: 8,
+          child: PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              color: Colors.grey[600],
+              size: 20,
+            ),
+            onSelected: (value) {
+              if (value == 'edit') {
+                onEdit();
+              } else if (value == 'delete') {
+                _showDeleteDialog(habit['id'] as int);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 8),
+                    Text('Upravit'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Smazat', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Timer ikona vlevo dole (pokud má časovač)
+        if (hasTimer && onTimer != null)
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: GestureDetector(
+              onTap: onTimer,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.timer,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showDeleteDialog(int habitId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Smazat návyk'),
+        content: const Text('Opravdu chceš tento návyk smazat?'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Odhlásit se',
-            onPressed: _logout,
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Zrušit'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Smazat', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
-      body: habits.isEmpty
-          ? const Center(child: Text('Zatím nemáš žádné návyky'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: habits.length,
-              itemBuilder: (context, index) {
-                final habit = habits[index];
-                final habitId = habit['id'] as int;
-                final iconCode = int.tryParse(habit['icon'] ?? '') ?? Icons.check.codePoint;
-                final icon = IconData(iconCode, fontFamily: 'MaterialIcons');
-                final color = Color(int.parse('0xFF${habit['color'].toString().replaceAll('#', '')}'));
-                final isCompleted = completedToday[habitId] ?? false;
+    );
 
-                return Card(
-                  elevation: 2,
-                  child: ListTile(
-                    leading: Icon(icon, color: color),
-                    title: Text(habit['name']),
-                    subtitle: Text(habit['description'] ?? ''),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Checkbox(
-                          value: isCompleted,
-                          onChanged: isCompleted
-                              ? null
-                              : (val) async {
-                                  await _markHabitCompleted(habitId);
-                                },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.grey),
-                          tooltip: 'Upravit',
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/add',
-                              arguments: habit,
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          tooltip: 'Smazat',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Smazat návyk'),
-                                content: const Text('Opravdu chceš tento návyk smazat?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('Zrušit'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('Smazat'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              await _deleteHabit(habitId);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteHabit(habitId);
+      await _loadHabits();
+    }
+  }
+
+  Widget _buildAddHabitCard() {
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.pushNamed(context, '/add');
+        if (result == true) {
+          await _loadHabits();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.purple.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Colors.purple,
+                size: 28,
+              ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/add');
-          await _loadHabits(); // obnovit seznam po návratu
-        },
-        child: const Icon(Icons.add),
+            const SizedBox(height: 12),
+            Text(
+              'Přidat návyk',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.purple,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
