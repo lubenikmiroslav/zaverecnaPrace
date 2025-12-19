@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../styles/app_styles.dart';
 import 'home_screen.dart';
 import 'calendar_screen.dart';
 import 'stats_screen.dart';
@@ -36,6 +37,7 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
+          AppAnimations.selectionClick();
           setState(() {
             _currentIndex = index;
           });

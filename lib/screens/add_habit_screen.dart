@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
 import '../services/notification_service.dart';
+import '../styles/app_styles.dart';
 
 class AddHabitScreen extends StatefulWidget {
   const AddHabitScreen({super.key});
@@ -217,13 +218,43 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   }
 
   Future<void> _saveHabit() async {
-    if (_formKey.currentState!.validate()) {
+    // Validace - pokud je jméno prázdné, použij default
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Zadej název návyku'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
       final prefs = await SharedPreferences.getInstance();
       final email = prefs.getString('user_email');
-      final user = await DatabaseHelper.instance.getUserByEmail(email!);
+      if (email == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chyba: Uživatel není přihlášen'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final user = await DatabaseHelper.instance.getUserByEmail(email);
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chyba: Uživatel nenalezen'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       final habitData = {
-        'user_id': user!['id'],
+        'user_id': user['id'],
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'color': '#${selectedColor.value.toRadixString(16).substring(2)}',
@@ -247,20 +278,48 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
         newHabitId = await DatabaseHelper.instance.insertHabit(habitData);
       }
 
-      // Nastavit notifikaci, pokud je nastaven reminder time
+      // Nastavit notifikaci, pokud je nastaven reminder time (s error handling)
       if (selectedReminderTime != null && selectedReminderTime!.isNotEmpty) {
-        await NotificationService.instance.scheduleHabitReminder(
-          habitId: newHabitId,
-          habitName: _nameController.text.trim(),
-          time: selectedReminderTime!,
-        );
+        try {
+          await NotificationService.instance.scheduleHabitReminder(
+            habitId: newHabitId,
+            habitName: _nameController.text.trim(),
+            time: selectedReminderTime!,
+          );
+        } catch (e) {
+          // Notifikace selhala, ale návyk je uložen - jen logujeme chybu
+          print('Chyba při nastavení notifikace: $e');
+          // Návyk je stále úspěšně uložen, takže pokračujeme
+        }
       } else if (habitId != null) {
         // Zrušit notifikaci, pokud byla odstraněna
-        await NotificationService.instance.cancelHabitReminder(habitId!);
+        try {
+          await NotificationService.instance.cancelHabitReminder(habitId!);
+        } catch (e) {
+          print('Chyba při zrušení notifikace: $e');
+        }
       }
 
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(habitId != null ? 'Návyk upraven' : 'Návyk vytvořen! 🎉'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
         Navigator.pop(context, true); // Vrátit true jako indikátor úspěchu
+      }
+    } catch (e) {
+      print('Chyba při ukládání návyku: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Chyba při ukládání návyku: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -303,14 +362,16 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.grey[900]!,
-              Colors.grey[800]!,
-            ],
-          ),
+          gradient: Theme.of(context).brightness == Brightness.dark
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.grey[900]!,
+                    Colors.grey[800]!,
+                  ],
+                )
+              : AppGradients.primaryGradient,
         ),
         child: Form(
           key: _formKey,
@@ -321,7 +382,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Theme.of(context).cardColor.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(

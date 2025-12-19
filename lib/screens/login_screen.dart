@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import '../styles/app_styles.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,9 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Neplatné přihlašovací údaje'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Text('Neplatné přihlašovací údaje'),
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -52,14 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.orange.shade400,
-              Colors.pink.shade400,
-            ],
-          ),
+          gradient: AppGradients.primaryGradient,
         ),
         child: SafeArea(
           child: Center(
@@ -73,52 +67,36 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Logo / Header
                     Text(
                       'HabitTrack',
-                      style: TextStyle(
-                        fontFamily: 'Howdybun',
-                        fontSize: 48,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
+                      style: AppTextStyles.logoText,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Sleduj své návyky, zlepšuj svůj život',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.9),
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppTextStyles.subtitle,
                     ),
                     const SizedBox(height: 48),
 
                     // Email field
                     TextFormField(
                       controller: _emailController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.email_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.email_outlined, color: AppColors.textTertiary),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
@@ -137,33 +115,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password field
                     TextFormField(
                       controller: _passwordController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Heslo',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.lock_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.lock_outlined, color: AppColors.textTertiary),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.white.withOpacity(0.8),
+                            color: AppColors.textTertiary,
                           ),
                           onPressed: () {
                             setState(() => _obscurePassword = !_obscurePassword);
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       obscureText: _obscurePassword,
@@ -179,26 +157,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.pink.shade400,
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.primaryPink,
                           elevation: 8,
-                          shadowColor: Colors.black.withOpacity(0.3),
+                          shadowColor: AppColors.blackWithOpacity(0.3),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: AppDecorations.buttonRadius,
                           ),
                         ),
                         child: _isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 24,
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.pink,
+                                  color: AppColors.primaryPink,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Přihlásit se',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: AppTextStyles.buttonText.copyWith(fontSize: 18),
                               ),
                       ),
                     ),
@@ -211,12 +189,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         'Nemáš účet? Registrovat se',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
-                          decorationColor: Colors.white,
+                          decorationColor: AppColors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Password reset link (for development/testing)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/password-reset');
+                      },
+                      child: Text(
+                        'Zapomněl jsi heslo?',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.white,
                         ),
                       ),
                     ),

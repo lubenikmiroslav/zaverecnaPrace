@@ -330,6 +330,27 @@ class DatabaseHelper {
     );
   }
 
+  // ✅ Reset hesla uživatele (pro vývoj/testování)
+  Future<int> resetUserPassword(String email, String newPassword) async {
+    final db = await database;
+    final hashed = newPassword.hashCode.toString();
+    return await db.update(
+      'users',
+      {'password_hash': hashed},
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+  }
+
+  // ✅ Získání všech uživatelů (pro vývoj/testování)
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final db = await database;
+    return await db.query(
+      'users',
+      columns: ['id', 'email', 'nickname'],
+    );
+  }
+
   // ✅ Odstranění splnění návyku (pro toggle)
   Future<int> removeHabitCompletion(int habitId, String date) async {
     final db = await database;

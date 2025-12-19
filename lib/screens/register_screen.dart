@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
+import '../styles/app_styles.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -39,9 +40,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await prefs.setInt('user_id', userId);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registrace úspěšná! 🎉'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Registrace úspěšná! 🎉'),
+            backgroundColor: AppColors.success,
           ),
         );
 
@@ -50,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Registrace selhala: ${e.toString().contains('UNIQUE') ? 'Email již existuje' : e}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       } finally {
@@ -64,14 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.orange.shade400,
-              Colors.pink.shade400,
-            ],
-          ),
+          gradient: AppGradients.primaryGradient,
         ),
         child: SafeArea(
           child: Center(
@@ -85,28 +79,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Header
                     Text(
                       'HabitTrack',
-                      style: TextStyle(
-                        fontFamily: 'Howdybun',
-                        fontSize: 42,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
+                      style: AppTextStyles.logoText.copyWith(fontSize: 42),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Vytvoř si účet a začni sledovat své návyky',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.9),
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppTextStyles.subtitle,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
@@ -114,24 +92,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Nickname field
                     TextFormField(
                       controller: _nicknameController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Přezdívka',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.person_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.person_outlined, color: AppColors.textTertiary),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       textCapitalization: TextCapitalization.words,
@@ -143,24 +121,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Email field
                     TextFormField(
                       controller: _emailController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.email_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.email_outlined, color: AppColors.textTertiary),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
@@ -179,33 +157,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Password field
                     TextFormField(
                       controller: _passwordController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Heslo',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.lock_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.lock_outlined, color: AppColors.textTertiary),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.white.withOpacity(0.8),
+                            color: AppColors.textTertiary,
                           ),
                           onPressed: () {
                             setState(() => _obscurePassword = !_obscurePassword);
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       obscureText: _obscurePassword,
@@ -217,33 +195,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Confirm password field
                     TextFormField(
                       controller: _confirmPasswordController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTextStyles.inputText,
                       decoration: InputDecoration(
                         labelText: 'Potvrdit heslo',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        prefixIcon: Icon(Icons.lock_outlined, color: Colors.white.withOpacity(0.8)),
+                        labelStyle: AppTextStyles.inputHint,
+                        prefixIcon: Icon(Icons.lock_outlined, color: AppColors.textTertiary),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.white.withOpacity(0.8),
+                            color: AppColors.textTertiary,
                           ),
                           onPressed: () {
                             setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.2),
+                        fillColor: AppColors.semiTransparentWhite,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.thinWhiteBorderSide,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 2),
+                          borderRadius: AppDecorations.inputRadius,
+                          borderSide: AppDecorations.whiteBorderSide,
                         ),
                       ),
                       obscureText: _obscureConfirmPassword,
@@ -262,27 +240,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       height: 56,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.pink.shade400,
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.primaryPink,
                           elevation: 8,
-                          shadowColor: Colors.black.withOpacity(0.3),
+                          shadowColor: AppColors.blackWithOpacity(0.3),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: AppDecorations.buttonRadius,
                           ),
                         ),
                         onPressed: _isLoading ? null : _register,
                         child: _isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 24,
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.pink,
+                                  color: AppColors.primaryPink,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Registrovat se',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: AppTextStyles.buttonText.copyWith(fontSize: 18),
                               ),
                       ),
                     ),
@@ -295,12 +273,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                       child: Text(
                         'Už máš účet? Přihlásit se',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
-                          decorationColor: Colors.white,
+                          decorationColor: AppColors.white,
                         ),
                       ),
                     ),

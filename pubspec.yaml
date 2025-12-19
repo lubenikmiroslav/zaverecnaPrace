@@ -43,3 +43,8 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/logo.png
+  # Pro Android adaptive icon - logo vyplní celou ikonu bez padding
+  android_adaptive_icon_background_color: "#FFFFFF"
+  android_adaptive_icon_foreground: assets/logo.png
+  # Pro iOS - odstranit alpha kanál (bílé pozadí)
+  remove_alpha_ios: true

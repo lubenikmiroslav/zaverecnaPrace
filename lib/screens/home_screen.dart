@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_helper.dart';
 import '../services/health_service.dart';
+import '../styles/app_styles.dart';
+import '../widgets/confetti_effect.dart';
+import '../widgets/animated_gradient_background.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/modern_empty_state.dart';
 import 'timer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,6 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<int, int> completedTodayCount = {};
   Map<int, int> habitStreaks = {};
   bool isLoading = true;
+  bool _showConfetti = false;
+  Color? _confettiColor;
 
   @override
   void initState() {
@@ -159,6 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await DatabaseHelper.instance.logHabitCompletion(habitId, DateTime.now());
     
+    final newCount = current + 1;
+    final isNowCompleted = newCount >= target;
+    
     // Zkontroluj a odemkni achievementy
     final unlocked = await DatabaseHelper.instance.checkAndUnlockAchievements(userId, habitId);
     if (unlocked.isNotEmpty) {
@@ -166,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     
     setState(() {
-      completedTodayCount[habitId] = current + 1;
+      completedTodayCount[habitId] = newCount;
     });
     
     // Aktualizovat streak
@@ -174,6 +184,25 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       habitStreaks[habitId] = newStreak;
     });
+    
+    // Zobrazit confetti pokud je návyk dokončen
+    if (isNowCompleted) {
+      final colorStr = habit['color'].toString().replaceAll('#', '');
+      final color = Color(int.parse('0xFF$colorStr'));
+      setState(() {
+        _showConfetti = true;
+        _confettiColor = color;
+      });
+      
+      // Skrýt confetti po 2 sekundách
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          setState(() {
+            _showConfetti = false;
+          });
+        }
+      });
+    }
   }
 
   void _showAchievementNotification(List<String> unlocked, String habitName) {
@@ -184,11 +213,24 @@ class _HomeScreenState extends State<HomeScreen> {
     };
 
     for (var achievement in unlocked) {
+      AppAnimations.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(messages[achievement] ?? 'Ocenění odemčeno!'),
-          backgroundColor: Colors.green,
+          content: Row(
+            children: [
+              const Icon(Icons.celebration, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(messages[achievement] ?? 'Ocenění odemčeno!'),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.success,
           duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           action: SnackBarAction(
             label: 'Zobrazit',
             textColor: Colors.white,
@@ -219,20 +261,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.orange.shade400,
-              Colors.pink.shade400,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
+      body: Stack(
+        children: [
+          AnimatedGradientBackground(
+            child: SafeArea(
+              child: Column(
+                children: [
               // Modern App Bar
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -241,18 +275,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'HabitTrack',
-                      style: TextStyle(
-                        fontFamily: 'Howdybun',
+                      style: AppTextStyles.logoText.copyWith(
                         fontSize: 32,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        shadows: AppDecorations.textShadowSmall,
                       ),
                     ),
                     GestureDetector(
@@ -261,11 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: AppColors.semiTransparentWhite,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                          border: AppDecorations.thinWhiteBorder,
                         ),
-                        child: Icon(Icons.person, color: Colors.white, size: 22),
+                        child: Icon(Icons.person, color: AppColors.white, size: 22),
                       ),
                     ),
                   ],
@@ -278,15 +303,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   margin: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                    color: AppColors.cardBackground(context),
+                    borderRadius: AppDecorations.largeRadius,
+                    boxShadow: AppDecorations.elevatedShadow,
                   ),
                   child: Column(
                     children: [
@@ -295,17 +314,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(
                             'Dnešní pokrok',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: AppTextStyles.statLabel.copyWith(color: Colors.grey[600]),
                           ),
                           Text(
                             '${(progress * 100).toInt()}%',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.pink.shade400,
+                            style: AppTextStyles.statLabel.copyWith(
+                              color: AppColors.primaryPink,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -317,35 +331,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(
                             '$completedCount',
-                            style: TextStyle(
-                              fontSize: 42,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.pink.shade400,
-                              height: 1,
-                            ),
+                            style: AppTextStyles.statValue.copyWith(height: 1),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8, left: 4),
                             child: Text(
                               '/ $totalCount',
-                              style: TextStyle(
-                                fontSize: 20,
+                              style: AppTextStyles.heading3.copyWith(
                                 color: Colors.grey[400],
-                                fontWeight: FontWeight.w500,
+                                fontSize: 20,
                               ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 10,
-                          backgroundColor: Colors.grey[200],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.pink.shade400),
-                        ),
+                      AnimatedProgressBar(
+                        progress: progress,
+                        color: AppColors.primaryPink,
+                        height: 10,
+                        borderRadius: AppDecorations.mediumRadius,
                       ),
                     ],
                   ),
@@ -354,39 +359,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Habits List
                   Expanded(
                     child: isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        ? ListView.builder(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: 3,
+                            itemBuilder: (context, index) => const SkeletonHabitCard(),
+                          )
                         : habits.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.emoji_nature,
-                                      size: 64,
-                                      color: Colors.white.withOpacity(0.7),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Zatím nemáš žádné návyky',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.white.withOpacity(0.9),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            ? ModernEmptyState(
+                                icon: Icons.emoji_nature,
+                                title: 'Zatím nemáš žádné návyky',
+                                subtitle: 'Začni přidáním svého prvního návyku a sleduj svůj pokrok!',
+                                actionLabel: 'Přidat návyk',
+                                onAction: () async {
+                                  final result = await Navigator.pushNamed(context, '/add');
+                                  if (result == true) {
+                                    await _loadHabits();
+                                  }
+                                },
                               )
                             : RefreshIndicator(
                                 onRefresh: _loadHabits,
-                                color: Colors.white,
+                                color: AppColors.white,
                                 child: ListView.builder(
                                   padding: const EdgeInsets.all(20),
                                   itemCount: habits.length + 1,
                                   itemBuilder: (context, index) {
                                     if (index == habits.length) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: _buildAddHabitCard(),
+                                      return BounceAnimation(
+                                        delay: Duration(milliseconds: index * 50),
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: _buildAddHabitCard(),
+                                        ),
                                       );
                                     }
                                     final habit = habits[index];
@@ -399,45 +403,60 @@ class _HomeScreenState extends State<HomeScreen> {
                                     final target = (habit['daily_target'] ?? 1) as int;
                                     final current = completedTodayCount[habitId] ?? 0;
 
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
-                                      child: _buildHabitCard(
-                                        habit: habit,
-                                        icon: icon,
-                                        color: color,
-                                        isCompleted: current >= target,
-                                        currentCount: current,
-                                        targetCount: target,
-                                        hasTimer: hasTimer,
-                                        streak: habitStreaks[habitId] ?? 0,
-                                        onTap: () => _toggleHabitCompletion(habitId),
-                                        onTimer: hasTimer
-                                            ? () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => TimerScreen(habit: habit),
-                                                  ),
-                                                );
-                                              }
-                                            : null,
-                                        onEdit: () async {
-                                          await Navigator.pushNamed(
-                                            context,
-                                            '/add',
-                                            arguments: habit,
-                                          );
-                                          await _loadHabits();
-                                        },
+                                    return BounceAnimation(
+                                      delay: Duration(milliseconds: index * 50),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: _buildHabitCard(
+                                          habit: habit,
+                                          icon: icon,
+                                          color: color,
+                                          isCompleted: current >= target,
+                                          currentCount: current,
+                                          targetCount: target,
+                                          hasTimer: hasTimer,
+                                          streak: habitStreaks[habitId] ?? 0,
+                                          onTap: () => _toggleHabitCompletion(habitId),
+                                          onTimer: hasTimer
+                                              ? () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => TimerScreen(habit: habit),
+                                                    ),
+                                                  );
+                                                }
+                                              : null,
+                                          onEdit: () async {
+                                            await Navigator.pushNamed(
+                                              context,
+                                              '/add',
+                                              arguments: habit,
+                                            );
+                                            await _loadHabits();
+                                          },
+                                        ),
                                       ),
                                     );
                                   },
                                 ),
                               ),
                   ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
+          // Confetti overlay
+          if (_showConfetti)
+            ConfettiEffect(
+              color: _confettiColor ?? AppColors.primaryPink,
+              onComplete: () {
+                setState(() {
+                  _showConfetti = false;
+                });
+              },
+            ),
+        ],
       ),
     );
   }
@@ -457,15 +476,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final progress = (currentCount / targetCount).clamp(0.0, 1.0).toDouble();
     final affirmation = habit['affirmation'] as String?;
-    return GestureDetector(
+    return ScaleOnTap(
       onTap: onTap,
       child: Stack(
         children: [
           // Modern card design
           Container(
-            height: 90,
+            height: 100,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -477,73 +496,53 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Stack(
               children: [
-                // Filled progress overlay
-                FractionallySizedBox(
-                  widthFactor: progress,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
+                // Animated filled progress overlay
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.0, end: progress),
+                  duration: AppAnimations.slow,
+                  curve: AppAnimations.smoothCurve,
+                  builder: (context, animatedProgress, child) {
+                    return FractionallySizedBox(
+                      widthFactor: animatedProgress,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Row(
                     children: [
                       // Texts
                       Expanded(
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               habit['name'],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black87,
+                                color: AppColors.cardTextPrimary(context),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (affirmation != null && affirmation.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  affirmation,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: color.withOpacity(0.8),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            if (habit['description']?.isNotEmpty ?? false)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  habit['description'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black54,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Row(
                               children: [
                                 Text(
                                   '$currentCount / $targetCount',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                    color: AppColors.cardTextPrimary(context),
                                   ),
                                 ),
                                 if (streak > 0) ...[
@@ -573,6 +572,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ],
                             ),
+                            if ((affirmation != null && affirmation.isNotEmpty) || (habit['description']?.isNotEmpty ?? false))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  affirmation?.isNotEmpty == true ? affirmation! : (habit['description'] ?? ''),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w400,
+                                    color: affirmation?.isNotEmpty == true 
+                                        ? color.withOpacity(0.8)
+                                        : AppColors.cardTextSecondary(context),
+                                    fontStyle: affirmation?.isNotEmpty == true ? FontStyle.italic : FontStyle.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -604,19 +620,32 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Menu (3 dots) in top-right
+          // Menu (3 dots) in top-right corner (above icon)
           Positioned(
-            top: 8,
-            right: 8,
+            top: 4,
+            right: 4,
             child: PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).cardColor.withOpacity(0.9),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Icon(Icons.more_vert, color: Colors.grey[600], size: 18),
+                child: Icon(
+                  Icons.more_vert,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.grey[700],
+                  size: 18,
+                ),
               ),
               onSelected: (value) {
                 if (value == 'edit') {
@@ -649,11 +678,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Timer icon bottom-left
+          // Timer icon bottom-right (next to icon)
           if (hasTimer && onTimer != null)
             Positioned(
               bottom: 8,
-              left: 12,
+              right: 76, // Positioned next to the main icon (56px icon + 12px spacing + 8px margin)
               child: GestureDetector(
                 onTap: onTimer,
                 child: Container(
@@ -661,6 +690,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.9),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.timer,
@@ -701,7 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAddHabitCard() {
-    return GestureDetector(
+    return ScaleOnTap(
       onTap: () async {
         final result = await Navigator.pushNamed(context, '/add');
         if (result == true) {
