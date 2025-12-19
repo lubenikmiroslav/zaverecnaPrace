@@ -43,6 +43,7 @@ Cílem aplikace je motivovat uživatele k dlouhodobé pravidelnosti a zlepšová
 - [x] Návrh databáze  
 - [x] Návrh uživatelského rozhraní (UI design)  
 - [x] Přihlášení / registrace  
-- [ ] Správa návyků  
-- [ ] Kalendář a statistiky  
+- [x] Správa návyků  
+- [x] Kalendář a statistiky  
 - [ ] Dokumentace a obhajoba  
+
