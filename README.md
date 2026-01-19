@@ -45,5 +45,6 @@ Cílem aplikace je motivovat uživatele k dlouhodobé pravidelnosti a zlepšová
 - [x] Přihlášení / registrace  
 - [x] Správa návyků  
 - [x] Kalendář a statistiky  
-- [ ] Dokumentace a obhajoba  
+- [x] Dokumentace a obhajoba  
+
 
