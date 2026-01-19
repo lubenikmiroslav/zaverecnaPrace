@@ -52,7 +52,8 @@ Cílem aplikace je motivovat uživatele k dlouhodobé pravidelnosti a zlepšová
 ## 📚 Dokumentace
 
 - 📄 [Závěrečná práce (PDF)](docs/lubenik-zaverecna-prace-verze3.pdf)
-- 🎤 [Prezentace na obhajobu (PDF)](obhajoba.pdf)  
+- 🎤 [Prezentace na obhajobu (PDF)](Obhajoba.pdf)  
+
 
 
 
