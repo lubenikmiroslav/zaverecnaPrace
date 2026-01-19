@@ -1,0 +1,111 @@
+\section{Významné části kódu}
+
+\subsection{DatabaseHelper -- Singleton Pattern}
+
+\begin{lstlisting}[caption=Implementace Singleton patternu pro~DatabaseHelper]
+class DatabaseHelper {
+  static final DatabaseHelper instance = DatabaseHelper._init();
+  static Database? _database;
+
+  DatabaseHelper._init();
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDB('habittrack.db');
+    return _database!;
+  }
+}
+\end{lstlisting}
+
+\subsection{Animovaný gradient pozadí}
+
+\begin{lstlisting}[caption=Implementace animovaného gradientního pozadí]
+class AnimatedGradientBackground extends StatefulWidget {
+  const AnimatedGradientBackground({super.key});
+
+  @override
+  State<AnimatedGradientBackground> createState() 
+      => _AnimatedGradientBackgroundState();
+}
+
+class _AnimatedGradientBackgroundState 
+    extends State<AnimatedGradientBackground> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primaryOrange,
+                AppColors.primaryPink,
+              ],
+              stops: [
+                0.0 + _controller.value * 0.1,
+                1.0 - _controller.value * 0.1,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+\end{lstlisting}
+
+\subsection{Confetti efekt}
+
+\begin{lstlisting}[caption=Implementace confetti efektu při dokončení návyku]
+class ConfettiEffect extends StatefulWidget {
+  final Color color;
+  final VoidCallback? onComplete;
+
+  const ConfettiEffect({
+    super.key,
+    required this.color,
+    this.onComplete,
+  });
+
+  @override
+  State<ConfettiEffect> createState() => _ConfettiEffectState();
+}
+
+class _ConfettiEffectState extends State<ConfettiEffect> {
+  final List<Particle> _particles = [];
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _generateParticles();
+  }
+
+  void _generateParticles() {
+    for (int i = 0; i < 50; i++) {
+      _particles.add(Particle(
+        x: _random.nextDouble(),
+        y: _random.nextDouble(),
+        vx: (_random.nextDouble() - 0.5) * 0.02,
+        vy: _random.nextDouble() * 0.03 + 0.01,
+        size: _random.nextDouble() * 5 + 3,
+      ));
+    }
+  }
+}
+\end{lstlisting}

@@ -1,0 +1,258 @@
+\section{Splněné cíle práce}
+
+Všechny stanovené cíle práce byly úspěšně splněny:
+
+\begin{itemize}
+    \item ✓ Navržena a~implementována mobilní aplikace pro~sledování návyků
+    \item ✓ Vytvořeno intuitivní uživatelské rozhraní s~moderním designem
+    \item ✓ Implementován systém pro~ukládání dat s~offline podporou
+    \item ✓ Zajištěna personalizace aplikace (dark mode, barvy, profil)
+    \item ✓ Vytvořen systém statistik a~vizualizace pokroku
+    \item ✓ Implementovány notifikace pro~připomenutí o~návycích
+\end{itemize}
+
+\section{Hlavní funkcionality aplikace}
+
+\subsection{Autentizace}
+
+Aplikace obsahuje kompletní systém autentizace:
+\begin{itemize}
+    \item Registrace nového uživatele s~validací vstupních dat
+    \item Přihlášení existujícího uživatele
+    \item Ukládání přihlašovacích údajů pro~automatické přihlášení
+    \item Možnost resetování hesla (pro~vývoj/testování)
+\end{itemize}
+
+\subsection{Správa návyků}
+
+Uživatel může:
+\begin{itemize}
+    \item Vytvářet nové návyky s~vlastními parametry (název, popis, barva, ikona, denní cíl)
+    \item Upravovat existující návyky
+    \item Mazat návyky
+    \item Označovat návyky jako splněné pro~daný den
+    \item Zobrazovat progress a~streak (počet dní v~řadě)
+\end{itemize}
+
+\subsection{Kalendář}
+
+Kalendář zobrazuje:
+\begin{itemize}
+    \item Historie plnění návyků pro~jednotlivé dny
+    \item Možnost přidat poznámky k~datům
+    \item Vizuální indikace splněných/nesplněných návyků
+\end{itemize}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{kalendar.png}
+        \caption*{Kalendář s~historií plnění návyků}
+        \label{fig:calendar}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{kalendarpoznamka.png}
+        \caption*{Přidání poznámky do~kalendáře}
+        \label{fig:calendarNote}
+    \end{minipage}
+    \caption{Kalendář a~poznámky}
+\end{figure}
+
+\subsection{Statistiky}
+
+Statistiky obsahují:
+\begin{itemize}
+    \item Týdenní a~měsíční přehledy
+    \item Grafy pokroku (line charts, bar charts)
+    \item Počty splnění návyků
+    \item Streaky (nejdelší série dní v~řadě)
+\end{itemize}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{statistiky.png}
+    \caption{Statistiky a~grafy pokroku}
+    \label{fig:stats}
+\end{figure}
+
+\subsection{Achievements}
+
+Systém achievementů motivuje uživatele:
+\begin{itemize}
+    \item 7 dní v~řadě -- odemčení achievementu
+    \item 30 dní v~řadě -- odemčení achievementu
+    \item 100 splnění -- odemčení achievementu
+\end{itemize}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{oceneni.png}
+    \caption{Systém achievementů}
+    \label{fig:achievements}
+\end{figure}
+
+\subsection{Personalizace}
+
+Uživatel může:
+\begin{itemize}
+    \item Přepínat mezi světlým a~tmavým režimem
+    \item Měnit barvu motivu aplikace
+    \item Nastavit profilovou fotku
+    \item Upravit přezdívku
+\end{itemize}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{ucet.png}
+    \caption{Profil uživatele a~nastavení}
+    \label{fig:profile}
+\end{figure}
+
+\subsection{Notifikace}
+
+Systém notifikací umožňuje:
+\begin{itemize}
+    \item Naplánovat připomenutí pro~návyky
+    \item Zobrazit notifikaci v~nastavený čas
+    \item Zrušit notifikaci
+\end{itemize}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{casovac.png}
+    \caption{Časovač pro~návyky s~časovým limitem}
+    \label{fig:timer}
+\end{figure}
+
+\section{Uživatelský manuál}
+
+\subsection{První spuštění aplikace}
+
+Po spuštění aplikace se zobrazí splash screen s~logem aplikace. Následně se uživatel dostane na~obrazovku přihlášení.
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{loadingScreen.png}
+    \caption{Loading screen s~logem aplikace}
+    \label{fig:loading}
+\end{figure}
+
+\subsection{Registrace}
+
+\begin{enumerate}
+    \item Klikněte na~tlačítko "Registrovat se"
+    \item Vyplňte formulář (přezdívka, email, heslo, potvrzení hesla)
+    \item Klikněte na~"Registrovat se"
+    \item Po úspěšné registraci budete automaticky přihlášeni
+\end{enumerate}
+
+\subsection{Přihlášení}
+
+\begin{enumerate}
+    \item Zadejte email a~heslo
+    \item Klikněte na~"Přihlásit se"
+    \item Po úspěšném přihlášení se dostanete na~hlavní obrazovku
+\end{enumerate}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{homeScreen.png}
+    \caption{Hlavní obrazovka s~návyky}
+    \label{fig:home}
+\end{figure}
+
+\subsection{Vytvoření návyku}
+
+Proces přidání nového návyku probíhá ve~třech krocích:
+
+\begin{enumerate}
+    \item Na~hlavní obrazovce klikněte na~tlačítko "+" (vpravo nahoře)
+    \item Vyplňte formulář (název, popis, barva, ikona, denní cíl)
+    \item Volitelně nastavte připomenutí
+    \item Klikněte na~"Vytvořit návyk"
+\end{enumerate}
+
+\vspace{-0.3cm}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.31\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{pridaniNavyku1.png}
+        \caption*{Krok 1: základní informace}
+        \label{fig:addHabit1}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.31\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{pridaniNavyku2.png}
+        \caption*{Krok 2: výběr ikony}
+        \label{fig:addHabit2}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.31\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{pridaniNavyku3.png}
+        \caption*{Krok 3: dokončení}
+        \label{fig:addHabit3}
+    \end{minipage}
+    \caption{Přidání návyku -- tři kroky}
+\end{figure}
+
+\subsection{Označení návyku jako splněného}
+
+\begin{enumerate}
+    \item Na~hlavní obrazovce klikněte na~kartu návyku
+    \item Návyk se označí jako splněný a~zobrazí se confetti efekt
+    \item Progress bar se aktualizuje
+\end{enumerate}
+
+\subsection{Zobrazení statistik}
+
+\begin{enumerate}
+    \item V~dolní navigaci klikněte na~"Statistiky"
+    \item Zobrazí se přehled statistik s~grafy
+    \item Můžete přepínat mezi týdenními a~měsíčními statistikami
+\end{enumerate}
+
+\subsection{Změna nastavení}
+
+\begin{enumerate}
+    \item V~dolní navigaci klikněte na~"Nastavení"
+    \item Můžete přepnout dark mode
+    \item Můžete změnit barvu motivu
+    \item Můžete upravit profil (fotka, přezdívka)
+\end{enumerate}
+
+\section{Technické specifikace}
+
+\subsection{Minimální požadavky}
+
+\begin{itemize}
+    \item Android: Android 5.0 (API level 21) nebo vyšší
+    \item iOS: iOS 12.0 nebo vyšší (pokud je aplikace kompilována pro~iOS)
+    \item Paměť: minimálně 50 MB volného místa
+\end{itemize}
+
+\subsection{Podporované funkce}
+
+\begin{itemize}
+    \item Offline fungování (všechna data jsou uložena lokálně)
+    \item Dark mode
+    \item Notifikace
+    \item Profilové fotky
+    \item Statistiky a~grafy
+\end{itemize}
+
+\section{Finální výstupy}
+
+Aplikace je plně funkční a~obsahuje všechny plánované funkcionality. Kód je strukturovaný, komentovaný a~připravený pro~další rozvoj. Aplikace je připravena k~distribuci a~použití.

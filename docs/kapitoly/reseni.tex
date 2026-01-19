@@ -1,0 +1,212 @@
+\section{Návrh architektury aplikace}
+
+Aplikace je strukturována podle principů čisté architektury s~oddělením vrstev. Struktura projektu je následující:
+
+\subsection{Struktura projektu}
+
+\begin{itemize}
+    \item \texttt{lib/screens/} -- obrazovky aplikace (UI vrstva)
+    \item \texttt{lib/services/} -- business logika a~služby (databáze, notifikace)
+    \item \texttt{lib/widgets/} -- znovupoužitelné widgety
+    \item \texttt{lib/styles/} -- centralizované styly a~design systém
+\end{itemize}
+
+\subsection{Design Patterns}
+
+V~aplikaci jsou použity následující návrhové vzory:
+
+\begin{itemize}
+    \item \textbf{Singleton} -- pro~DatabaseHelper a~NotificationService (zajišťuje jedinou instanci)
+    \item \textbf{State Management} -- pomocí StatefulWidget a~setState pro~lokální stav
+    \item \textbf{Repository Pattern} -- pro~práci s~databází (abstrakce datové vrstvy)
+    \item \textbf{Factory Pattern} -- pro~vytváření widgetů a~stylů
+\end{itemize}
+
+\section{Návrh databáze}
+
+Databáze obsahuje následující tabulky:
+
+\subsection{Schéma databáze}
+
+\begin{itemize}
+    \item \texttt{users} -- informace o~uživatelích (id, email, nickname, password\_hash, profile\_photo\_path)
+    \item \texttt{habits} -- definice návyků (id, user\_id, name, description, color, icon, daily\_target, atd.)
+    \item \texttt{habit\_logs} -- záznamy o~plnění návyků (id, habit\_id, date, completed)
+    \item \texttt{calendar\_notes} -- poznámky k~datům (id, user\_id, date, note)
+    \item \texttt{achievements} -- odemčené achievementy (id, user\_id, habit\_id, type, unlocked\_at)
+\end{itemize}
+
+\subsection{Migrace databáze}
+
+Databáze podporuje migrace pro~plynulé aktualizace schématu. Při změně verze databáze se automaticky provedou potřebné změny (přidání sloupců, vytvoření nových tabulek).
+
+\section{Návrh uživatelského rozhraní}
+
+UI bylo navrženo s~důrazem na:
+
+\begin{itemize}
+    \item Minimalistický a~moderní design
+    \item Konzistentní barevné schéma (gradient Pink → Orange)
+    \item Animace pro~lepší uživatelský zážitek
+    \item Dark mode podpora
+    \item Responzivní layout pro~různé velikosti obrazovek
+\end{itemize}
+
+\section{Implementační postupy}
+
+\subsection{Inicializace aplikace}
+
+Aplikace začíná v~souboru \texttt{main.dart}, kde se inicializují klíčové služby (databáze, notifikace) a~načítají uživatelská nastavení.
+
+\begin{lstlisting}[caption=Inicializace aplikace v~main.dart, label=lst:main]
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await DatabaseHelper.instance.database;
+  await NotificationService.instance.initialize();
+
+  final prefs = await SharedPreferences.getInstance();
+  final savedEmail = prefs.getString('user_email');
+  final isDarkMode = prefs.getBool('dark_mode') ?? false;
+  final themeColor = prefs.getString('theme_color') ?? '#009688';
+
+  runApp(HabitTrackApp(
+    isLoggedIn: savedEmail != null,
+    isDarkMode: isDarkMode,
+    themeColor: themeColor,
+  ));
+}
+\end{lstlisting}
+
+\subsection{Databázová vrstva}
+
+Databázová vrstva je implementována pomocí Singleton patternu v~třídě \texttt{DatabaseHelper}. Všechny databázové operace jsou asynchronní a~používají SQL dotazy.
+
+\begin{lstlisting}[caption=Implementace Singleton patternu pro~DatabaseHelper, label=lst:database]
+class DatabaseHelper {
+  static final DatabaseHelper instance = DatabaseHelper._init();
+  static Database? _database;
+
+  DatabaseHelper._init();
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDB('habittrack.db');
+    return _database!;
+  }
+
+  Future<Database> _initDB(String filePath) async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, filePath);
+    return await openDatabase(path, version: 6, 
+                              onCreate: _createDB, 
+                              onUpgrade: _onUpgrade);
+  }
+}
+\end{lstlisting}
+
+\subsection{Správa návyků}
+
+Hlavní obrazovka zobrazuje seznam návyků uživatele s~možností označit je jako splněné. Při dokončení návyku se zobrazí confetti efekt pro~vizuální zpětnou vazbu.
+
+\begin{lstlisting}[caption=Načítání návyků a~jejich statistik, label=lst:habits]
+Future<void> _loadHabits() async {
+  final data = await DatabaseHelper.instance.getHabits(userId);
+  final todayStr = DateTime.now().toIso8601String().split('T').first;
+  
+  Map<int, int> todayCount = {};
+  Map<int, int> streaks = {};
+  
+  for (var habit in data) {
+    final habitId = habit['id'] as int;
+    final count = await DatabaseHelper.instance
+        .getDailyCompletionCount(habitId, todayStr);
+    todayCount[habitId] = count;
+    
+    final streak = await DatabaseHelper.instance
+        .getHabitStreak(habitId);
+    streaks[habitId] = streak;
+  }
+  
+  setState(() {
+    habits = data;
+    completedTodayCount = todayCount;
+    habitStreaks = streaks;
+  });
+}
+\end{lstlisting}
+
+\subsection{Stylování a~design systém}
+
+Aplikace používá centralizovaný design systém s~oddělenými soubory pro~barvy, gradienty, textové styly a~dekorace. To umožňuje snadnou údržbu a~konzistenci vzhledu.
+
+\begin{lstlisting}[caption=Definice barev v~design systému, label=lst:colors]
+class AppColors {
+  // Primární barvy
+  static const Color primaryOrange = Color(0xFFFF9800);
+  static const Color primaryPink = Color(0xFFE91E63);
+  static const Color primaryPurple = Color(0xFF9C27B0);
+  
+  // Barvy pro~návyky
+  static const Color habitPink = Color(0xFFE91E63);
+  static const Color habitRed = Color(0xFFF44336);
+  static const Color habitOrange = Color(0xFFFF9800);
+  // ... další barvy
+}
+\end{lstlisting}
+
+\subsection{Animace a~efekty}
+
+Aplikace obsahuje různé animace pro~zlepšení uživatelského zážitku:
+\begin{itemize}
+    \item AnimatedGradientBackground -- animované gradientní pozadí
+    \item ConfettiEffect -- confetti při dokončení návyku
+    \item BounceAnimation -- bounce efekt pro~seznamy
+    \item ScaleOnTap -- scale efekt při kliknutí
+    \item SkeletonLoader -- skeleton loading screens
+\end{itemize}
+
+\section{Způsoby testování}
+
+Aplikace byla testována na~několika úrovních:
+
+\subsection{Manuální testování}
+
+Aplikace byla manuálně testována na:
+\begin{itemize}
+    \item Android emulátoru (různé verze Android)
+    \item Fyzickém Android zařízení
+\end{itemize}
+
+\subsection{Testované funkcionality}
+
+\begin{itemize}
+    \item Autentizace (registrace, přihlášení)
+    \item Správa návyků (vytváření, úprava, mazání)
+    \item Označení návyku jako splněného
+    \item Zobrazení statistik a~grafů
+    \item Notifikace a~připomenutí
+    \item Dark mode přepínání
+    \item Personalizace (barvy, profilová fotka)
+\end{itemize}
+
+\section{Řešení problémů}
+
+Během vývoje byly řešeny následující problémy:
+
+\subsection{Přetečení layoutu na~kartách návyků}
+
+\textbf{Problém:} Ikonky a~text se překrývaly na~kartách návyků při menších obrazovkách.
+
+\textbf{Řešení:} Zvýšena výška karet a~upraveno rozložení prvků s~lepším paddingem.
+
+\subsection{Bílá obrazovka před splash screenem}
+
+\textbf{Problém:} Na~Android zařízeních se zobrazovala bílá obrazovka před načtením Flutter splash screenu.
+
+\textbf{Řešení:} Upraveny native Android launch screen soubory (\texttt{launch\_background.xml}) pro~zobrazení gradientního pozadí.
+
+\subsection{Type mismatch při dark mode}
+
+\textbf{Problém:} Některé barvy byly definovány jako funkce vyžadující BuildContext, ale používaly se jako statické hodnoty.
+
+\textbf{Řešení:} Rozděleny barvy na~statické (pro~gradient pozadí) a~context-aware (pro~karty a~text).

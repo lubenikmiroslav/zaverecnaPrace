@@ -1,0 +1,70 @@
+\section{Flutter Framework}
+
+Flutter je open-source UI framework vyvinutý společností Google pro~vytváření nativních aplikací pro~mobilní, webové a~desktopové platformy z~jediného kódu. Flutter používá programovací jazyk Dart.
+
+\subsection{Výhody Flutteru}
+
+Volba Flutter frameworku byla motivována následujícími výhodami:
+\begin{itemize}
+    \item \textbf{Cross-platform vývoj} -- jedna codebase pro~Android, iOS, Web a~Desktop
+    \item \textbf{Vysoký výkon} -- kompilace do~nativního kódu (AOT compilation)
+    \item \textbf{Bohatá widget knihovna} -- Material Design a~Cupertino widgety
+    \item \textbf{Hot reload} -- rychlý vývoj s~okamžitou aktualizací změn
+    \item \textbf{Silná komunita} -- rozsáhlá dokumentace a~podpora
+    \item \textbf{Bezplatný a~open-source} -- žádné licenční poplatky
+\end{itemize}
+
+\section{Dart programovací jazyk}
+
+Dart je objektově orientovaný programovací jazyk vyvinutý společností Google. Je navržen pro~vývoj aplikací, které běží na~klientovi i~serveru.
+
+\subsection{Klíčové vlastnosti Dartu}
+
+\begin{itemize}
+    \item Statická typová kontrola pro~lepší bezpečnost kódu
+    \item Asynchronní programování pomocí \texttt{async/await}
+    \item Garbage collection pro~automatickou správu paměti
+    \item Mixiny pro~vícenásobnou dědičnost
+    \item Streamy pro~zpracování datových toků
+\end{itemize}
+
+\section{SQLite databáze}
+
+SQLite je lehká relační databázová knihovna implementovaná jako knihovna C. V~aplikaci je použita přes balíček \texttt{sqflite} pro~lokální ukládání dat.
+
+\subsection{Výhody SQLite}
+
+Volba SQLite byla motivována:
+\begin{itemize}
+    \item \textbf{Offline fungování} -- data jsou uložena lokálně na~zařízení
+    \item \textbf{Rychlý přístup} -- přímý přístup k~datům bez síťového připojení
+    \item \textbf{Snadná implementace} -- jednoduché SQL dotazy
+    \item \textbf{Malá velikost} -- minimální nároky na~paměť
+    \item \textbf{Bez serveru} -- nevyžaduje databázový server
+\end{itemize}
+
+\section{SharedPreferences}
+
+SharedPreferences je mechanismus pro~ukládání jednoduchých datových typů (String, int, bool) v~key-value formátu. V~aplikaci je použit pro~ukládání uživatelských nastavení (dark mode, theme color, login status).
+
+\section{Flutter Local Notifications}
+
+Balíček \texttt{flutter\_local\_notifications} umožňuje zobrazovat lokální notifikace na~zařízení. V~aplikaci je použit pro~připomenutí uživatelům o~plnění návyků v~nastavený čas.
+
+\section{FL Chart}
+
+FL Chart je knihovna pro~vytváření grafů a~vizualizací v~Flutter aplikacích. V~aplikaci je použita pro~zobrazení statistik a~pokroku uživatelů v~různých formátech (line charts, bar charts).
+
+\section{Image Picker}
+
+Balíček \texttt{image\_picker} umožňuje uživatelům vybrat obrázky z~galerie nebo pořídit fotografie pomocí kamery. V~aplikaci je použit pro~výběr profilové fotky uživatele.
+
+\section{Path Provider}
+
+Balíček \texttt{path\_provider} poskytuje přístup k~systémovým cestám pro~ukládání souborů. V~aplikaci je použit pro~ukládání profilových fotografií uživatelů.
+
+\section{Zdůvodnění výběru technologií}
+
+Výběr technologií byl proveden s~ohledem na~požadavek na~cross-platform kompatibilitu, potřebu offline fungování aplikace, snahu o~moderní a~atraktivní uživatelské rozhraní, dostupnost a~kvalitu dokumentace a~aktivitu komunity a~podporu.
+
+Všechny použité technologie jsou open-source a~bezplatné, což umožňuje volné použití a~distribuci aplikace.
