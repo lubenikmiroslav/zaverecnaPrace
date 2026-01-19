@@ -45,6 +45,16 @@ Cílem aplikace je motivovat uživatele k dlouhodobé pravidelnosti a zlepšová
 - [x] Přihlášení / registrace  
 - [x] Správa návyků  
 - [x] Kalendář a statistiky  
-- [x] Dokumentace a obhajoba  
+- [x] Dokumentace a obhajoba
+
+---
+
+## 📚 Dokumentace
+
+- 📄 [Závěrečná práce (PDF)](docs/lubenik-zaverecna-prace-verze3.pdf)
+- 🎤 [Prezentace na obhajobu (PDF)](obhajoba.pdf)  
+
+
+
 
 
